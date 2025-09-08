@@ -27,7 +27,7 @@ public:
 
 	void initialize_object_positions(float eccentricity, float dist_from_camera);
 
-	void move_object_horizontally(AActor* object, float start_ecc, float end_ecc, float dist_from_camera, float period);
+	void move_object_horizontally(AActor* object, float start_ecc, float end_ecc, float dist_from_camera, float period, float current_time);
 	void move_object_vertically(AActor* object, float start_ecc, float end_ecc, float dist_from_camera, float period);
 	void move_object_diagonally(AActor* object, float start_ecc, float end_ecc, float dist_from_camera, float period);
 
@@ -50,8 +50,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
 	float end_eccentricity = 60.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
+	float cycle_period = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
+	bool synchronize_motion = true;
 
 
+	float left_timer = 0.0f;
+	float right_timer = 0.0f;
 
 	unsigned int num_ticks = 0;
 

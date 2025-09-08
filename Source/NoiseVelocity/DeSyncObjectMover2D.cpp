@@ -31,10 +31,37 @@ void ADeSyncObjectMover2D::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (num_ticks > 300)
+	// These movements should be desynchronized so that
+	// The position can't just be naively compared
+
+	
+	// Synchronized
+	if(synchronize_motion)
 	{
-		move_object_horizontally(left_object, start_eccentricity, end_eccentricity, object_dist_from_camera, 1.0f);
-		move_object_horizontally(right_object, -start_eccentricity, -end_eccentricity, object_dist_from_camera, 1.0f);
+		if(num_ticks > 300)
+		{
+			move_object_horizontally(left_object, start_eccentricity, end_eccentricity, object_dist_from_camera, cycle_period, left_timer);
+			move_object_horizontally(right_object, -start_eccentricity, -end_eccentricity, object_dist_from_camera, cycle_period, right_timer);
+		
+			left_timer += DeltaTime;
+			right_timer += DeltaTime;
+		}
+	}
+
+	else
+	{
+		// Desynchronized
+		if (num_ticks > 300)
+		{
+			move_object_horizontally(left_object, start_eccentricity, end_eccentricity, object_dist_from_camera, cycle_period, left_timer);
+			left_timer += DeltaTime;
+		}
+
+		if (num_ticks > 400)
+		{
+			move_object_horizontally(right_object, -start_eccentricity, -end_eccentricity, object_dist_from_camera, cycle_period, right_timer);
+			right_timer += DeltaTime;
+		}
 	}
 
 	num_ticks++;
@@ -109,9 +136,8 @@ void ADeSyncObjectMover2D::move_object_vertically(AActor* object, float start_ec
 }
 
 
-void ADeSyncObjectMover2D::move_object_horizontally(AActor* object, float start_ecc, float end_ecc, float dist_from_camera, float period)
+void ADeSyncObjectMover2D::move_object_horizontally(AActor* object, float start_ecc, float end_ecc, float dist_from_camera, float period, float current_time)
 {
-	float current_time = GetWorld()->GetTimeSeconds();
 	float cycle_position = FMath::Fmod(current_time, period) / period;
 
 	float linear_factor = 0.0f;
