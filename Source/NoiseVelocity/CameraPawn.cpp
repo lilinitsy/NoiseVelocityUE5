@@ -1,7 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Kismet/GameplayStatics.h"
 
 #include "CameraPawn.h"
+
 
 
 // Sets default values
@@ -55,6 +57,15 @@ void ACameraPawn::BeginPlay()
 		// Assign render targets
 		left_scenecapture->TextureTarget = left_rendertarget;
 		right_scenecapture->TextureTarget = right_rendertarget;
+
+		// Object filtering so each scene capture only renders certain objects
+		TArray<AActor*> left_actors;
+		TArray<AActor*> right_actors;
+
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("left"), left_actors);
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("right"), right_actors);
+
+		UE_LOG(LogTemp, Warning, TEXT("Number of actors (left, right): (%d, %d)\n"), left_actors.Num(), right_actors.Num());
 
 		UE_LOG(LogTemp, Warning, TEXT("CameraPawn set up to play!"));
 	}
