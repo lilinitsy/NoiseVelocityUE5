@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "GameFramework/Pawn.h"
+#include "Engine/TextureRenderTarget2D.h"
+
 #include "CameraPawn.generated.h"
 
 UCLASS()
@@ -27,10 +30,10 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	
-	USceneComponent *origin;
-	UCameraComponent *left_camera;
-	UCameraComponent *right_camera;
 
+	USceneComponent* origin;
+	UCameraComponent *camera;
+	USceneCaptureComponent2D *left_scenecapture;
+	USceneCaptureComponent2D *right_scenecapture;
 
 };

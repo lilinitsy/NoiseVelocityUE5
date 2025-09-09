@@ -1,10 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "DeSyncObjectMover2D.h"
+
 #include "CameraPawn.h"
 #include "Engine/World.h"
 
-#include "DeSyncObjectMover2D.h"
 
 
 
@@ -95,9 +96,9 @@ void ADeSyncObjectMover2D::initialize_object_positions(float eccentricity, float
 	right_object->GetRootComponent()->SetMobility(EComponentMobility::Movable);
 
 	ACameraPawn *casted_camera_pawn = Cast<ACameraPawn>(camera_pawn);
-	UCameraComponent *left_camera = casted_camera_pawn->left_camera;
-	FVector camera_right = left_camera->GetRightVector();
-	FVector center_position = get_center_position_of_camera_look(left_camera, dist_from_camera);
+	UCameraComponent *camera = casted_camera_pawn->camera;
+	FVector camera_right = camera->GetRightVector();
+	FVector center_position = get_center_position_of_camera_look(camera, dist_from_camera);
 
 	float eccentricity_radians = FMath::DegreesToRadians(eccentricity);
 	float offset_distance = FMath::Tan(eccentricity_radians) * dist_from_camera;
@@ -129,9 +130,9 @@ void ADeSyncObjectMover2D::move_object_vertically(AActor* object, float start_ec
 	}
 
 	ACameraPawn* casted_camera_pawn = Cast<ACameraPawn>(camera_pawn);
-	UCameraComponent* left_camera = casted_camera_pawn->left_camera;
-	FVector camera_right = left_camera->GetRightVector();
-	FVector center_position = get_center_position_of_camera_look(left_camera, dist_from_camera);
+	UCameraComponent* camera = casted_camera_pawn->camera;
+	FVector camera_right = camera->GetRightVector();
+	FVector center_position = get_center_position_of_camera_look(camera, dist_from_camera);
 
 }
 
@@ -151,9 +152,9 @@ void ADeSyncObjectMover2D::move_object_horizontally(AActor* object, float start_
 	}
 
 	ACameraPawn* casted_camera_pawn = Cast<ACameraPawn>(camera_pawn);
-	UCameraComponent* left_camera = casted_camera_pawn->left_camera;
-	FVector camera_right = left_camera->GetRightVector();
-	FVector center_position = get_center_position_of_camera_look(left_camera, dist_from_camera);
+	UCameraComponent* camera = casted_camera_pawn->camera;
+	FVector camera_right = camera->GetRightVector();
+	FVector center_position = get_center_position_of_camera_look(camera, dist_from_camera);
 
 
 	float current_ecc = FMath::Lerp(start_ecc, end_ecc, linear_factor);

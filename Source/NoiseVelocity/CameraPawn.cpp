@@ -13,17 +13,51 @@ ACameraPawn::ACameraPawn()
 	origin = CreateDefaultSubobject<USceneComponent>(TEXT("origin"));
 	origin->SetupAttachment(RootComponent);
 
-	left_camera = CreateDefaultSubobject<UCameraComponent>(TEXT("left_camera"));
-	right_camera = CreateDefaultSubobject<UCameraComponent>(TEXT("right_camera"));
-	left_camera->SetupAttachment(origin);
-	right_camera->SetupAttachment(origin);
-}
+	camera = CreateDefaultSubobject<UCameraComponent>(TEXT("camera"));
+	camera->SetupAttachment(origin);
 
+
+	left_scenecapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("left_scenecapture"));
+	right_scenecapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("right_scenecapture"));
+	left_scenecapture->SetupAttachment(camera);
+	right_scenecapture->SetupAttachment(camera);
+
+}
+	
 // Called when the game starts or when spawned
 void ACameraPawn::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// Figure out screen viewport size
+	UGameViewportClient* viewport_client = GetWorld()->GetGameViewport();
+
+	// If this isn't checked, then the editor will crash
+	if (viewport_client)
+	{
+		FVector2D viewport_size;
+		viewport_client->GetViewportSize(viewport_size);
+
+		UE_LOG(LogTemp, Warning, TEXT("Viewport size: %d %d\n"), (int32) viewport_size.X, (int32) viewport_size.Y);
+
+
+		// Create render targets
+		// UTextureRenderTarget2D* left_rendertarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("left_rendertarget"));
+		// UTextureRenderTarget2D* right_rendertarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("right_rendertarget"));
+		 UTextureRenderTarget2D *left_rendertarget = NewObject<UTextureRenderTarget2D>(this);
+		 UTextureRenderTarget2D *right_rendertarget = NewObject<UTextureRenderTarget2D>(this);
+
+
+		// Set the render targets to use half width of this
+		left_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
+		right_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
+		
+		// Assign render targets
+		left_scenecapture->TextureTarget = left_rendertarget;
+		right_scenecapture->TextureTarget = right_rendertarget;
+
+		UE_LOG(LogTemp, Warning, TEXT("CameraPawn set up to play!"));
+	}
 }
 
 // Called every frame
