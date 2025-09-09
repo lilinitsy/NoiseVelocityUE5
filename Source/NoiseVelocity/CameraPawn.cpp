@@ -65,6 +65,9 @@ void ACameraPawn::BeginPlay()
 		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("left"), left_actors);
 		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("right"), right_actors);
 
+		left_scenecapture->ShowOnlyActors = left_actors;
+		right_scenecapture->ShowOnlyActors = right_actors;
+
 		UE_LOG(LogTemp, Warning, TEXT("Number of actors (left, right): (%d, %d)\n"), left_actors.Num(), right_actors.Num());
 
 		UE_LOG(LogTemp, Warning, TEXT("CameraPawn set up to play!"));
