@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
+#include "Components/PostProcessComponent.h"
+
 #include "GameFramework/Pawn.h"
 #include "Engine/TextureRenderTarget2D.h"
 
@@ -35,5 +37,9 @@ public:
 	UCameraComponent *camera;
 	USceneCaptureComponent2D *left_scenecapture;
 	USceneCaptureComponent2D *right_scenecapture;
+
+	// Post process material
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PostProcess Materials")
+	UMaterialInterface *composite_material;
 
 };

@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Kismet/GameplayStatics.h"
-
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/World.h"
 #include "CameraPawn.h"
 
 
@@ -24,6 +25,7 @@ ACameraPawn::ACameraPawn()
 	left_scenecapture->SetupAttachment(camera);
 	right_scenecapture->SetupAttachment(camera);
 
+	// Materials are set from the editor, with UPROPERTY ensuring that
 }
 	
 // Called when the game starts or when spawned
@@ -44,8 +46,6 @@ void ACameraPawn::BeginPlay()
 
 
 		// Create render targets
-		// UTextureRenderTarget2D* left_rendertarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("left_rendertarget"));
-		// UTextureRenderTarget2D* right_rendertarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("right_rendertarget"));
 		 UTextureRenderTarget2D *left_rendertarget = NewObject<UTextureRenderTarget2D>(this);
 		 UTextureRenderTarget2D *right_rendertarget = NewObject<UTextureRenderTarget2D>(this);
 
@@ -69,6 +69,16 @@ void ACameraPawn::BeginPlay()
 		right_scenecapture->ShowOnlyActors = right_actors;
 
 		UE_LOG(LogTemp, Warning, TEXT("Number of actors (left, right): (%d, %d)\n"), left_actors.Num(), right_actors.Num());
+
+
+		if (composite_material)
+		{
+			UMaterialInstanceDynamic *dynamic_material = UMaterialInstanceDynamic::Create(composite_material, this);
+			dynamic_material->SetTextureParameterValue(FName("left_texture"), left_scenecapture->TextureTarget);
+			dynamic_material->SetTextureParameterValue(FName("right_texture"), right_scenecapture->TextureTarget);
+
+			camera->PostProcessSettings.AddBlendable(dynamic_material, 1.0f);
+		}
 
 		UE_LOG(LogTemp, Warning, TEXT("CameraPawn set up to play!"));
 	}
