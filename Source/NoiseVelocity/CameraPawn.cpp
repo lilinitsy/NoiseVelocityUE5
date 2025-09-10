@@ -51,9 +51,11 @@ void ACameraPawn::BeginPlay()
 
 
 		// Set the render targets to use half width of this
-		left_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
-		right_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
-		
+		//left_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
+		//right_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
+		left_rendertarget->InitAutoFormat(viewport_size.X, viewport_size.Y);
+		right_rendertarget->InitAutoFormat(viewport_size.X, viewport_size.Y);
+
 		// Assign render targets
 		left_scenecapture->TextureTarget = left_rendertarget;
 		right_scenecapture->TextureTarget = right_rendertarget;
