@@ -64,9 +64,13 @@ void ACameraPawn::BeginPlay()
 		TArray<AActor*> left_actors;
 		TArray<AActor*> right_actors;
 
+		// Tag actors in the editor
 		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("left"), left_actors);
 		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("right"), right_actors);
 
+		// Have to manually change PrimitiveRenderMode to use ShowOnlyActors
+		left_scenecapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+		right_scenecapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 		left_scenecapture->ShowOnlyActors = left_actors;
 		right_scenecapture->ShowOnlyActors = right_actors;
 
