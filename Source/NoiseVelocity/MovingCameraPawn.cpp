@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "CameraPawn.h"
+#include "MovingCameraPawn.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -9,9 +9,9 @@
 
 
 // Sets default values
-ACameraPawn::ACameraPawn()
+AMovingCameraPawn::AMovingCameraPawn()
 {
- 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	origin = CreateDefaultSubobject<USceneComponent>(TEXT("origin"));
@@ -26,14 +26,21 @@ ACameraPawn::ACameraPawn()
 	left_scenecapture->SetupAttachment(camera);
 	right_scenecapture->SetupAttachment(camera);
 
+	left_scenecapture->bCaptureEveryFrame = true;
+	right_scenecapture->bCaptureEveryFrame = true;
+
+	// Ensure scene captures are enabled
+	left_scenecapture->SetComponentTickEnabled(true);
+	right_scenecapture->SetComponentTickEnabled(true);
+
 	// Materials are set from the editor, with UPROPERTY ensuring that
 }
-	
+
 // Called when the game starts or when spawned
-void ACameraPawn::BeginPlay()
+void AMovingCameraPawn::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// Figure out screen viewport size
 	UGameViewportClient* viewport_client = GetWorld()->GetGameViewport();
 
@@ -43,12 +50,13 @@ void ACameraPawn::BeginPlay()
 		FVector2D viewport_size;
 		viewport_client->GetViewportSize(viewport_size);
 
-		UE_LOG(LogTemp, Warning, TEXT("Viewport size: %d %d\n"), (int32) viewport_size.X, (int32) viewport_size.Y);
+		UE_LOG(LogTemp, Warning, TEXT("Viewport size: %d %d\n"), (int32)viewport_size.X, (int32)viewport_size.Y);
 
 
 		// Create render targets
-		 UTextureRenderTarget2D *left_rendertarget = NewObject<UTextureRenderTarget2D>(this);
-		 UTextureRenderTarget2D *right_rendertarget = NewObject<UTextureRenderTarget2D>(this);
+		UTextureRenderTarget2D* left_rendertarget = NewObject<UTextureRenderTarget2D>(this);
+		UTextureRenderTarget2D* right_rendertarget = NewObject<UTextureRenderTarget2D>(this);
+
 
 
 		// Set the render targets to use half width of this
@@ -80,28 +88,53 @@ void ACameraPawn::BeginPlay()
 
 		if (composite_material)
 		{
-			UMaterialInstanceDynamic *dynamic_material = UMaterialInstanceDynamic::Create(composite_material, this);
+			UMaterialInstanceDynamic* dynamic_material = UMaterialInstanceDynamic::Create(composite_material, this);
 			dynamic_material->SetTextureParameterValue(FName("left_texture"), left_scenecapture->TextureTarget);
 			dynamic_material->SetTextureParameterValue(FName("right_texture"), right_scenecapture->TextureTarget);
 
 			camera->PostProcessSettings.AddBlendable(dynamic_material, 1.0f);
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT("CameraPawn set up to play!"));
+		UE_LOG(LogTemp, Warning, TEXT("MovingCameraPawn set up to play!"));
 	}
 }
 
 // Called every frame
-void ACameraPawn::Tick(float DeltaTime)
+void AMovingCameraPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
+	if (num_ticks > 300)
+	{
+		move_scene_capture_component2d_forward(left_scenecapture, DeltaTime);
+	}
+
+	if (num_ticks > 400)
+	{
+		move_scene_capture_component2d_forward(right_scenecapture, DeltaTime);
+	}
+
+
+	// UE_LOG(LogTemp, Warning, TEXT("Num left showonlyactors: %u\n"), left_scenecapture->ShowOnlyActors.Num());
+	// UE_LOG(LogTemp, Warning, TEXT("Num left showonlycomponents: %u\n"), left_scenecapture->ShowOnlyComponents.Num());
+
+	num_ticks++;
 }
 
 // Called to bind functionality to input
-void ACameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AMovingCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
 
+void AMovingCameraPawn::move_scene_capture_component2d_forward(USceneCaptureComponent2D* scene_capture, float dt)
+{
+	// Get camera forward vector; will move along this
+	FVector forward = camera->GetForwardVector();
+	FVector new_position = scene_capture->GetComponentLocation() + movement_speed * forward * dt;
+	scene_capture->SetWorldLocation(new_position);
+
+	UE_LOG(LogTemp, Warning, TEXT("Scenecap pos: %f %f %f\n"), scene_capture->GetComponentLocation().X, scene_capture->GetComponentLocation().Y, scene_capture->GetComponentLocation().Z);
+}
