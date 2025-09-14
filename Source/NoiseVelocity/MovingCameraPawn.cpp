@@ -107,12 +107,12 @@ void AMovingCameraPawn::Tick(float DeltaTime)
 
 	if (num_ticks > 300)
 	{
-		move_scene_capture_component2d_forward(left_scenecapture, DeltaTime);
+		move_scene_capture_component2d_forward(left_scenecapture, experiment_condition_movement_speed, DeltaTime);
 	}
 
 	if (num_ticks > 400)
 	{
-		move_scene_capture_component2d_forward(right_scenecapture, DeltaTime);
+		move_scene_capture_component2d_forward(right_scenecapture, reference_movement_speed, DeltaTime);
 	}
 
 
@@ -129,7 +129,7 @@ void AMovingCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 }
 
-void AMovingCameraPawn::move_scene_capture_component2d_forward(USceneCaptureComponent2D* scene_capture, float dt)
+void AMovingCameraPawn::move_scene_capture_component2d_forward(USceneCaptureComponent2D* scene_capture, float movement_speed, float dt)
 {
 	// Get camera forward vector; will move along this
 	FVector forward = camera->GetForwardVector();

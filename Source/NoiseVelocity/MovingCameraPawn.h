@@ -32,19 +32,22 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void move_scene_capture_component2d_forward(USceneCaptureComponent2D *scenecapture, float dt);
+	void move_scene_capture_component2d_forward(USceneCaptureComponent2D *scenecapture, float movement_speed, float dt);
 
 	USceneComponent* origin;
 	UCameraComponent *camera;
 	USceneCaptureComponent2D *left_scenecapture;
-	USceneCaptureComponent2D *right_scenecapture;
+	USceneCaptureComponent2D *right_scenecapture; // REFERENCE side
 
 	// Post process material
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PostProcess Materials")
 	UMaterialInterface *composite_material;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
-	float movement_speed = 100.0f; // 1m/sec
+	float reference_movement_speed = 100.0f; // 1m/sec
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
+	float experiment_condition_movement_speed = 150.0f;
 
 
 	unsigned int num_ticks = 0;
