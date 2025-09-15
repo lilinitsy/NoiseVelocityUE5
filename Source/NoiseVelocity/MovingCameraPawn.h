@@ -34,6 +34,15 @@ public:
 
 	void move_scene_capture_component2d_forward(USceneCaptureComponent2D *scenecapture, float movement_speed, float dt);
 
+
+	// Input functions
+	UFUNCTION()
+	void on_up_pressed();
+
+	UFUNCTION()
+	void on_down_pressed();
+
+
 	USceneComponent* origin;
 	UCameraComponent *camera;
 	USceneCaptureComponent2D *left_scenecapture;

@@ -127,7 +127,26 @@ void AMovingCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	PlayerInputComponent->BindAction("UpArrow", IE_Pressed, this, &AMovingCameraPawn::on_up_pressed);
+	PlayerInputComponent->BindAction("DownArrow", IE_Pressed, this, &AMovingCameraPawn::on_down_pressed);
+
 }
+
+void AMovingCameraPawn::on_up_pressed()
+{
+	experiment_condition_movement_speed += 10.0f; // move speed up by .1m/s
+
+	UE_LOG(LogTemp, Warning, TEXT("Movement speed: %f\n"), experiment_condition_movement_speed);
+}
+
+void AMovingCameraPawn::on_down_pressed()
+{
+	experiment_condition_movement_speed -= 10.0f;
+
+	UE_LOG(LogTemp, Warning, TEXT("Movement speed: %f\n"), experiment_condition_movement_speed);
+}
+
+
 
 void AMovingCameraPawn::move_scene_capture_component2d_forward(USceneCaptureComponent2D* scene_capture, float movement_speed, float dt)
 {
@@ -135,6 +154,4 @@ void AMovingCameraPawn::move_scene_capture_component2d_forward(USceneCaptureComp
 	FVector forward = camera->GetForwardVector();
 	FVector new_position = scene_capture->GetComponentLocation() + movement_speed * forward * dt;
 	scene_capture->SetWorldLocation(new_position);
-
-	UE_LOG(LogTemp, Warning, TEXT("Scenecap pos: %f %f %f\n"), scene_capture->GetComponentLocation().X, scene_capture->GetComponentLocation().Y, scene_capture->GetComponentLocation().Z);
 }
