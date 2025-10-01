@@ -34,6 +34,7 @@ public:
 
 	void move_scene_capture_component2d_forward(USceneCaptureComponent2D *scenecapture, float movement_speed, float dt);
 
+	void initialize();
 
 	// Input functions
 	UFUNCTION()
@@ -60,4 +61,6 @@ public:
 
 
 	unsigned int num_ticks = 0;
+
+	bool initialized = false;
 };

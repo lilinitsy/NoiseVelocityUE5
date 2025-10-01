@@ -41,6 +41,12 @@ void AMovingCameraPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+
+}
+
+
+void AMovingCameraPawn::initialize()
+{
 	// Figure out screen viewport size
 	UGameViewportClient* viewport_client = GetWorld()->GetGameViewport();
 
@@ -99,10 +105,18 @@ void AMovingCameraPawn::BeginPlay()
 	}
 }
 
+
+
 // Called every frame
 void AMovingCameraPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (!initialized)
+	{
+		initialize();
+		initialized = true;
+	}
 
 
 	if (num_ticks > 300)
