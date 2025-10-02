@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "MovingCameraPawn.h"
+#include "MovingCameraPawnDithering.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -9,7 +9,7 @@
 
 
 // Sets default values
-AMovingCameraPawn::AMovingCameraPawn()
+AMovingCameraPawnDithering::AMovingCameraPawnDithering()
 {
 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -37,7 +37,7 @@ AMovingCameraPawn::AMovingCameraPawn()
 }
 
 // Called when the game starts or when spawned
-void AMovingCameraPawn::BeginPlay()
+void AMovingCameraPawnDithering::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -45,7 +45,7 @@ void AMovingCameraPawn::BeginPlay()
 }
 
 
-void AMovingCameraPawn::initialize()
+void AMovingCameraPawnDithering::initialize()
 {
 	// Figure out screen viewport size
 	UGameViewportClient* viewport_client = GetWorld()->GetGameViewport();
@@ -59,56 +59,21 @@ void AMovingCameraPawn::initialize()
 		UE_LOG(LogTemp, Warning, TEXT("Viewport size: %d %d\n"), (int32)viewport_size.X, (int32)viewport_size.Y);
 
 
-		// Create render targets
-		UTextureRenderTarget2D* left_rendertarget = NewObject<UTextureRenderTarget2D>(this);
-		UTextureRenderTarget2D* right_rendertarget = NewObject<UTextureRenderTarget2D>(this);
-
-
-
-		// Set the render targets to use half width of this
-		//left_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
-		//right_rendertarget->InitAutoFormat(viewport_size.X / 2, viewport_size.Y);
-		left_rendertarget->InitAutoFormat(viewport_size.X, viewport_size.Y);
-		right_rendertarget->InitAutoFormat(viewport_size.X, viewport_size.Y);
-
-		// Assign render targets
-		left_scenecapture->TextureTarget = left_rendertarget;
-		right_scenecapture->TextureTarget = right_rendertarget;
-
-		// Object filtering so each scene capture only renders certain objects
-		TArray<AActor*> left_actors;
-		TArray<AActor*> right_actors;
-
-		// Tag actors in the editor
-		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("left"), left_actors);
-		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("right"), right_actors);
-
-		// Have to manually change PrimitiveRenderMode to use ShowOnlyActors
-		left_scenecapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
-		right_scenecapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
-		left_scenecapture->ShowOnlyActors = left_actors;
-		right_scenecapture->ShowOnlyActors = right_actors;
-
-		UE_LOG(LogTemp, Warning, TEXT("Number of actors (left, right): (%d, %d)\n"), left_actors.Num(), right_actors.Num());
-
-
 		if (composite_material)
 		{
 			UMaterialInstanceDynamic* dynamic_material = UMaterialInstanceDynamic::Create(composite_material, this);
-			dynamic_material->SetTextureParameterValue(FName("left_texture"), left_scenecapture->TextureTarget);
-			dynamic_material->SetTextureParameterValue(FName("right_texture"), right_scenecapture->TextureTarget);
 
 			camera->PostProcessSettings.AddBlendable(dynamic_material, 1.0f);
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT("MovingCameraPawn set up to play!"));
+		UE_LOG(LogTemp, Warning, TEXT("MovingCameraPawnDithering set up to play!"));
 	}
 }
 
 
 
 // Called every frame
-void AMovingCameraPawn::Tick(float DeltaTime)
+void AMovingCameraPawnDithering::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
@@ -137,23 +102,23 @@ void AMovingCameraPawn::Tick(float DeltaTime)
 }
 
 // Called to bind functionality to input
-void AMovingCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AMovingCameraPawnDithering::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("UpArrow", IE_Pressed, this, &AMovingCameraPawn::on_up_pressed);
-	PlayerInputComponent->BindAction("DownArrow", IE_Pressed, this, &AMovingCameraPawn::on_down_pressed);
+	PlayerInputComponent->BindAction("UpArrow", IE_Pressed, this, &AMovingCameraPawnDithering::on_up_pressed);
+	PlayerInputComponent->BindAction("DownArrow", IE_Pressed, this, &AMovingCameraPawnDithering::on_down_pressed);
 
 }
 
-void AMovingCameraPawn::on_up_pressed()
+void AMovingCameraPawnDithering::on_up_pressed()
 {
 	experiment_condition_movement_speed += 10.0f; // move speed up by .1m/s
 
 	UE_LOG(LogTemp, Warning, TEXT("Movement speed: %f\n"), experiment_condition_movement_speed);
 }
 
-void AMovingCameraPawn::on_down_pressed()
+void AMovingCameraPawnDithering::on_down_pressed()
 {
 	experiment_condition_movement_speed -= 10.0f;
 
@@ -162,7 +127,7 @@ void AMovingCameraPawn::on_down_pressed()
 
 
 
-void AMovingCameraPawn::move_scene_capture_component2d_forward(USceneCaptureComponent2D* scene_capture, float movement_speed, float dt)
+void AMovingCameraPawnDithering::move_scene_capture_component2d_forward(USceneCaptureComponent2D* scene_capture, float movement_speed, float dt)
 {
 	// Get camera forward vector; will move along this
 	FVector forward = camera->GetForwardVector();

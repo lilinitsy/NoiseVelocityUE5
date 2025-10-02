@@ -49,3 +49,7 @@ Session.vim
 
 # Visual Studio
 .vs
+
+
+# Large assets
+Content/CityPark/*
