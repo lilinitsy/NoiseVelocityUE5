@@ -1,0 +1,133 @@
+#include "/Engine/Public/Platform.ush"
+
+
+Texture2D<float4> input_texture;
+SamplerState      Input_Sampler;
+RWTexture2D<float4> output_texture;
+
+// match these in cpp
+float2 foveation_center;
+float  radius_fovea;
+float  radius_periphery;
+float  screen_width_cm;
+float  screen_height_cm;
+float  distance_from_screen;
+
+
+float2 uv2deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
+{
+    float2 uv_diff = uv - fixation_uv;
+    float2 physical_diff = uv_diff * screen_dims_cm;
+    float2 angle_rad = atan(physical_diff / distance_cm);
+    return degrees(angle_rad);
+}
+
+
+float eccentricity(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
+{
+    float2 deg2 = uv2deg(uv, fixation_uv, distance_cm, screen_dims_cm);
+    return length(deg2);
+}
+
+float4 gaussian_blur(Texture2D<float4> tex, uint2 coord, uint2 frame_size, float sigma)
+{
+    float4 color = float4(0, 0, 0, 0);
+    float  total_weight = 0.0f;
+
+    sigma = max(sigma, 0.01f);
+    int kernel_radius = min(10, int(ceil(3.0f * sigma)));
+
+    [loop]
+        for (int y = -kernel_radius; y <= kernel_radius; ++y)
+        {
+            [loop]
+                for (int x = -kernel_radius; x <= kernel_radius; ++x)
+                {
+                    int2 samplecoord = int2(coord) + int2(x, y);
+                    samplecoord = clamp(samplecoord, int2(0, 0), int2(frame_size) - 1);
+
+                    float dist_squared = float(x * x + y * y);
+                    float weight = exp(-0.5f * dist_squared / (sigma * sigma));
+
+                    float4 sample = tex.Load(int3(samplecoord, 0));
+                    color += sample * weight;
+                    total_weight += weight;
+                }
+        }
+
+    if (total_weight > 0.0f)
+    {
+        return color / total_weight;
+    }
+    else
+    {
+        return tex.Load(int3(coord, 0));
+    }
+}
+
+//[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+[numthreads(16, 16, 1)]
+void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    input_texture.GetDimensions(width, height);
+
+    if (id.x >= width || id.y >= height)
+    {
+        return;
+    }
+
+    float2 uv = (float2)id.xy / float2(width, height);
+    float2 screen_dims_cm = float2(screen_width_cm, screen_height_cm);
+
+    float ecc = eccentricity(uv, foveation_center, distance_from_screen, screen_dims_cm);
+
+    float4 sample_fovea = input_texture[id.xy];
+
+    float fovea_radius = radius_fovea * 0.5f;
+    float mid_radius = radius_periphery * 0.5f;
+    float fovea_blend_start = fovea_radius;
+    float fovea_blend_end = fovea_radius + 1.0f;
+    float mid_blend_start = mid_radius;
+    float mid_blend_end = mid_radius + 1.0f;
+
+    float4 sample_colour;
+
+    if (ecc <= fovea_blend_start)
+    {
+        sample_colour = sample_fovea;
+    }
+
+    else if (ecc <= fovea_blend_end)
+    {
+        float t = saturate((ecc - fovea_blend_start) / (fovea_blend_end - fovea_blend_start));
+        float4 blur_mid = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
+        sample_colour = lerp(sample_fovea, blur_mid, t);
+    }
+
+    else if (ecc <= mid_blend_start)
+    {
+        sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
+    }
+
+    else if (ecc <= mid_blend_end)
+    {
+        float t = saturate((ecc - mid_blend_start) / (mid_blend_end - mid_blend_start));
+        float4 blur_mid = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
+        float4 blur_far = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.57f * ecc);
+        sample_colour = lerp(blur_mid, blur_far, t);
+    }
+
+    else
+    {
+        sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.57f * ecc);
+    }
+
+    output_texture[id.xy] = sample_colour;
+}
+
+
+
+
+
+
