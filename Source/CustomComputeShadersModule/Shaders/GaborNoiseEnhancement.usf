@@ -1,0 +1,208 @@
+#include "/Engine/Public/Platform.ush"
+
+#define THREADS_X 16
+#define THREADS_Y 16
+#define THREADS_Z 1
+
+Texture2D<float4>   input_foveated;
+SamplerState        LinearSampler;
+RWTexture2D<float4> output_texture;
+
+float2 foveation_center;
+float  screen_width_cm;
+float  screen_height_cm;
+float  distance_from_screen_cm;
+
+float  blur_rate_arcmin_per_degree;
+float  s_k;
+uint   cells;
+uint   impulses_per_cell;
+uint   seed;
+
+#define PYR_LEVELS 5
+
+float2 uv2deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
+{
+    float2 uv_diff = uv - fixation_uv;
+    float2 physical_diff = uv_diff * screen_dims_cm;
+    float2 angle_rad = atan(physical_diff / distance_cm);
+    return degrees(angle_rad);
+}
+
+float eccentricity_deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
+{
+    return length(uv2deg(uv, fixation_uv, distance_cm, screen_dims_cm));
+}
+
+float pixels_per_degree(uint img_w, float screen_width_cm, float distance_cm)
+{
+    float screen_width_m = screen_width_cm * 0.01f;
+    float distance_m = distance_cm * 0.01f;
+
+    float one_deg_rad = radians(1.0f);
+    float size_m = 2.0f * distance_m * tan(one_deg_rad * 0.5f);
+
+    float px_per_m = img_w / screen_width_m;
+    return px_per_m * size_m;
+}
+
+float choose_laplacian_level_from_sigma(float sigma_pix, float a)
+{
+    float sigma_f = 1.0f / (2.0f * 3.14159265f * max(1e-6f, sigma_pix));
+    float f_c = sqrt(-log(a)) / (3.14159265f * max(1e-6f, sigma_pix));
+    float l_a = -log2(max(1e-6f, f_c)) - 0.5f;
+    return l_a;
+}
+
+float laplacian_luma(Texture2D<float4> tex, float2 uv, uint level)
+{
+    float3 g0 = tex.SampleLevel(LinearSampler, uv, level).rgb;
+    float3 g1 = tex.SampleLevel(LinearSampler, uv, level + 1).rgb;
+    float3 lap = g0 - g1;
+    return dot(abs(lap), float3(0.2126, 0.7152, 0.0722));
+}
+
+uint hash_u32(uint x)
+{
+    x ^= x >> 16;
+    x *= 0x7feb352d;
+    x ^= x >> 15;
+    x *= 0x846ca68b;
+    x ^= x >> 16;
+    return x;
+}
+
+uint hash3(uint a, uint b, uint c, uint base_seed)
+{
+    uint h = base_seed;
+    h = hash_u32(h ^ a);
+    h = hash_u32(h ^ b);
+    h = hash_u32(h ^ c);
+    return h;
+}
+
+float rand01(uint a, uint b, uint c, uint base_seed)
+{
+    return (hash3(a, b, c, base_seed) & 0x00FFFFFFu) / 16777215.0f;
+}
+
+float gabor_sample(float2 x, float freq_cpp, float theta, float amp)
+{
+    float ct = cos(theta);
+    float st = sin(theta);
+    float2 xr = float2(ct * x.x + st * x.y, -st * x.x + ct * x.y);
+
+    float sigma = 0.5f / max(freq_cpp, 1e-4f);
+    float gauss = exp(-dot(xr, xr) / (2.0f * sigma * sigma));
+    float sinus = cos(2.0f * 3.14159265f * freq_cpp * xr.x);
+
+    return amp * gauss * sinus;
+}
+
+float estimate_orientation(Texture2D<float4> tex, uint2 xy, uint w, uint h)
+{
+    int2 left = int2(max(int(xy.x) - 1, 0), xy.y);
+    int2 right = int2(min(int(xy.x) + 1, int(w - 1)), xy.y);
+    int2 up = int2(xy.x, max(int(xy.y) - 1, 0));
+    int2 down = int2(xy.x, min(int(xy.y) + 1, int(h - 1)));
+
+    float3 cL = tex.Load(int3(left, 0)).rgb;
+    float3 cR = tex.Load(int3(right, 0)).rgb;
+    float3 cU = tex.Load(int3(up, 0)).rgb;
+    float3 cD = tex.Load(int3(down, 0)).rgb;
+
+    float3 gx = cR - cL;
+    float3 gy = cD - cU;
+
+    float Lgx = dot(gx, float3(0.2126, 0.7152, 0.0722));
+    float Lgy = dot(gy, float3(0.2126, 0.7152, 0.0722));
+
+    return atan2(Lgy, Lgx);
+}
+
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void gabor_foveated_enhance_cs(uint3 id : SV_DispatchThreadID)
+{
+    uint w, h;
+    input_foveated.GetDimensions(w, h);
+    if(id.x >= w || id.y >= h)
+    {
+        return;
+    }
+
+    uint2 xy = id.xy;
+    float2 uv = (float2)xy / float2(w, h);
+
+    float4 base = input_foveated.Load(int3(xy, 0));
+    float3 base_rgb = base.rgb;
+
+    float2 screen_dims_cm = float2(screen_width_cm, screen_height_cm);
+    float ecc_deg = eccentricity_deg(uv, foveation_center, distance_from_screen_cm, screen_dims_cm);
+
+    float ppd = pixels_per_degree(w, screen_width_cm, distance_from_screen_cm);
+    float sigma_pix = (ecc_deg * blur_rate_arcmin_per_degree / 60.0f) * ppd;
+
+    float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25f);
+    float l0f = floor(l_a);
+    float l1f = l0f + 1.0f;
+    uint l0 = (uint)clamp(l0f, 0.0f, (float)(PYR_LEVELS - 2));
+    uint l1 = (uint)clamp(l1f, 0.0f, (float)(PYR_LEVELS - 2));
+    float t = saturate(l_a - l0f);
+
+    float lap0 = laplacian_luma(input_foveated, uv, l0);
+    float lap1 = laplacian_luma(input_foveated, uv, l1);
+    float lap_amp = lerp(lap0, lap1, t);
+
+    float w_mask = smoothstep(0.5f, 2.0f, sigma_pix); // 0 in fovea, 1 periphery
+    float amp = s_k * lap_amp * w_mask;
+
+    float sigma_f = 1.0f / (2.0f * 3.14159265f * max(1e-6f, sigma_pix));
+    float F_L = 3.0f * sigma_f;
+    float F_H = 0.5f;
+    F_L = clamp(F_L, 1.0f / 512.0f, F_H * 0.999f);
+
+    float theta = estimate_orientation(input_foveated, xy, w, h);
+
+    float2 cell_size_uv = 1.0f / float2(cells, cells);
+    uint cell_x = min((uint)(uv.x / cell_size_uv.x), cells - 1);
+    uint cell_y = min((uint)(uv.y / cell_size_uv.y), cells - 1);
+
+    float noise = 0.0f;
+
+    [loop]
+    for (uint i = 0; i < impulses_per_cell; ++i)
+    {
+        uint cell_seed = hash3(cell_x, cell_y, i, seed);
+
+        float ru = (float)(cell_seed & 0xFFFFu) / 65535.0f;
+        float rv = (float)((cell_seed >> 16) & 0xFFFFu) / 65535.0f;
+        float2 impulse_uv = (float2(cell_x, cell_y) + float2(ru, rv)) * cell_size_uv;
+
+        float2 x = (uv - impulse_uv) * float2(w, h);
+
+        // random frequency in log-space between F_L and F_H
+        float rf = rand01(cell_x + i, cell_y, seed, seed);
+        float freq = exp(lerp(log(F_L), log(F_H), rf));
+
+        // gabor at this pixel, average over impulses
+        float g = gabor_sample(x, freq, theta, amp / impulses_per_cell);
+        noise += g;
+    }
+
+    // add noise in luminance and rescale RGB
+    float Y = dot(base_rgb, float3(0.2126, 0.7152, 0.0722));
+    float Yn = saturate(Y + noise);
+
+    const float eps = 1e-6f;
+    float scale = (Yn + eps) / (Y + eps);
+    float3 final_rgb = saturate(base_rgb * scale);
+
+    output_texture[xy] = float4(final_rgb, base.a);
+}
+
+
+
+
+
+

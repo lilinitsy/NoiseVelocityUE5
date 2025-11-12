@@ -57,3 +57,33 @@ class FGaussianBlurCS : public FGlobalShader
 		using FParameters = FGaussianBlurShaderParameters;
 		SHADER_USE_PARAMETER_STRUCT(FGaussianBlurCS, FGlobalShader);
 };
+
+
+BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementParameters, )
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, input_foveated)
+	SHADER_PARAMETER_SAMPLER(SamplerState, LinearSampler)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_texture)
+
+	SHADER_PARAMETER(FVector2f, foveation_center)
+	SHADER_PARAMETER(float, screen_width_cm)
+	SHADER_PARAMETER(float, screen_height_cm)
+	SHADER_PARAMETER(float, distance_from_screen_cm)
+
+	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
+	SHADER_PARAMETER(float, s_k)
+	SHADER_PARAMETER(unsigned int, cells)
+	SHADER_PARAMETER(unsigned int, impulses_per_cell)
+	SHADER_PARAMETER(unsigned int, seed)
+END_SHADER_PARAMETER_STRUCT()
+class FGaborNoiseEnhancementCS : public FGlobalShader
+{
+	public:
+		DECLARE_EXPORTED_SHADER_TYPE(FGaborNoiseEnhancementCS, Global, );
+		using FParameters = FGaborNoiseEnhancementParameters;
+		SHADER_USE_PARAMETER_STRUCT(FGaborNoiseEnhancementCS, FGlobalShader);
+};
+
+
+
+
+

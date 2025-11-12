@@ -4,14 +4,14 @@
 #include "PostProcess/PostProcessing.h"
 #include "RenderGraphUtils.h"
 
-FGaussianBlurViewExtension::FGaussianBlurViewExtension(const FAutoRegister& auto_register, FVector2f foveation_center, float radius_fovea, float radius_periphery, float screen_width_cm, float screen_height_cm, float distance_from_screen)
-    : FSceneViewExtensionBase(auto_register)
-    , foveation_center(foveation_center)
-    , radius_fovea(radius_fovea)
-    , radius_periphery(radius_periphery)
-    , screen_width_cm(screen_width_cm)
-    , screen_height_cm(screen_height_cm)
-    , distance_from_screen(distance_from_screen)
+FGaussianBlurViewExtension::FGaussianBlurViewExtension(const FAutoRegister& auto_register, FVector2f foveation_center, float radius_fovea, float radius_periphery, float screen_width_cm, float screen_height_cm, float distance_from_screen) : 
+    FSceneViewExtensionBase(auto_register),
+    foveation_center(foveation_center),
+    radius_fovea(radius_fovea),
+    radius_periphery(radius_periphery),
+    screen_width_cm(screen_width_cm),
+    screen_height_cm(screen_height_cm),
+    distance_from_screen(distance_from_screen)
 {
 }
 
@@ -24,8 +24,7 @@ void FGaussianBlurViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& gr
     FRDGTextureDesc desc = scene_color->Desc;
     desc.Flags |= TexCreate_UAV;
 
-    FRDGTextureRef blur_output =
-        graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
+    FRDGTextureRef blur_output = graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
 
     // bind compute shader
     TShaderMapRef<FGaussianBlurCS> blur_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
