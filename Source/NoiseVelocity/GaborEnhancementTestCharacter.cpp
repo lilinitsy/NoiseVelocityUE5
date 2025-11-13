@@ -24,7 +24,6 @@ void AGaborEnhancementTestCharacter::BeginPlay()
 	const float screen_width_cm = 60.0f;
 	const float screen_height_cm = 30.0f;
 	const float distance_from_screen_cm = 71.0f;
-	const float blur_rate_arcmin_per_degree = 0.34f;
 	const float s_k = 21.02f;
 	const unsigned int cells = 64;
 	const unsigned int impulses_per_cell = 32;
@@ -38,6 +37,7 @@ void AGaborEnhancementTestCharacter::BeginPlay()
 		screen_height_cm,
 		distance_from_screen_cm,
 		blur_rate_arcmin_per_degree,
+		use_radially_increasing_blur,
 		s_k,
 		cells,
 		impulses_per_cell,

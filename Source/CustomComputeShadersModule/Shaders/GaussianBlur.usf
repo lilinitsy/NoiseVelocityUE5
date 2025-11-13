@@ -12,6 +12,8 @@ float  radius_periphery;
 float  screen_width_cm;
 float  screen_height_cm;
 float  distance_from_screen;
+float blur_rate_arcmin_per_degree;
+uint use_radially_increasing_blur;
 
 
 float2 uv2deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
@@ -93,34 +95,51 @@ void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
 
     float4 sample_colour;
 
-    if (ecc <= fovea_blend_start)
+    if (use_radially_increasing_blur)
     {
-        sample_colour = sample_fovea;
+        if (ecc <= fovea_blend_start)
+        {
+            sample_colour = sample_fovea;
+        }
+
+        else if (ecc <= fovea_blend_end)
+        {
+            float t = saturate((ecc - fovea_blend_start) / (fovea_blend_end - fovea_blend_start));
+            float4 blur_mid = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
+            sample_colour = lerp(sample_fovea, blur_mid, t);
+        }
+
+        else if (ecc <= mid_blend_start)
+        {
+            sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
+        }
+
+        else if (ecc <= mid_blend_end)
+        {
+            float t = saturate((ecc - mid_blend_start) / (mid_blend_end - mid_blend_start));
+            float4 blur_mid = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
+            float4 blur_far = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.57f * ecc);
+            sample_colour = lerp(blur_mid, blur_far, t);
+        }
+
+        else
+        {
+            sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.57f * ecc);
+        }
     }
 
-    else if (ecc <= fovea_blend_end)
-    {
-        float t = saturate((ecc - fovea_blend_start) / (fovea_blend_end - fovea_blend_start));
-        float4 blur_mid = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
-        sample_colour = lerp(sample_fovea, blur_mid, t);
-    }
-
-    else if (ecc <= mid_blend_start)
-    {
-        sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
-    }
-
-    else if (ecc <= mid_blend_end)
-    {
-        float t = saturate((ecc - mid_blend_start) / (mid_blend_end - mid_blend_start));
-        float4 blur_mid = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.34f * ecc);
-        float4 blur_far = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.57f * ecc);
-        sample_colour = lerp(blur_mid, blur_far, t);
-    }
-
+    // No progressively increasing blur
     else
     {
-        sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), 0.57f * ecc);
+        if (ecc <= fovea_blend_start)
+        {
+            sample_colour = sample_fovea;
+        }
+        
+        else
+        {
+            sample_colour = gaussian_blur(input_texture, id.xy, uint2(width, height), blur_rate_arcmin_per_degree * ecc);
+        }
     }
 
     output_texture[id.xy] = sample_colour;

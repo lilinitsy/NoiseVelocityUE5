@@ -32,4 +32,6 @@ public:
 
 	TSharedPtr<FGaussianBlurViewExtension, ESPMode::ThreadSafe> view_extension;
 	
+	float blur_rate_arcmin_per_degree = 0.34;
+	unsigned int use_radially_increasing_blur = 0;
 };

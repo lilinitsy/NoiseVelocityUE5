@@ -42,13 +42,16 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaussianBlurShaderParameters, )
 	SHADER_PARAMETER_SAMPLER(SamplerState, Input_Sampler)
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_texture)
 
+	SHADER_PARAMETER(FVector2f, foveation_center)
 	SHADER_PARAMETER(float, radius_fovea)
 	SHADER_PARAMETER(float, radius_periphery)
 	
 	SHADER_PARAMETER(float, screen_width_cm)
 	SHADER_PARAMETER(float, screen_height_cm)
 	SHADER_PARAMETER(float, distance_from_screen)
-	SHADER_PARAMETER(FVector2f, foveation_center)
+
+	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
+	SHADER_PARAMETER(unsigned int, use_radially_increasing_blur)
 END_SHADER_PARAMETER_STRUCT()
 class FGaussianBlurCS : public FGlobalShader
 {
@@ -70,6 +73,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementParameters, )
 	SHADER_PARAMETER(float, distance_from_screen_cm)
 
 	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
+	SHADER_PARAMETER(unsigned int, use_radially_increasing_blur)
 	SHADER_PARAMETER(float, s_k)
 	SHADER_PARAMETER(unsigned int, cells)
 	SHADER_PARAMETER(unsigned int, impulses_per_cell)

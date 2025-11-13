@@ -32,7 +32,9 @@ void AGaussianBlurTestCharacter::BeginPlay()
 		radius_periphery,
 		screen_width_cm,
 		screen_height_cm,
-		distance_from_screen);
+		distance_from_screen,
+		blur_rate_arcmin_per_degree,
+		use_radially_increasing_blur);
 }
 
 // Called every frame

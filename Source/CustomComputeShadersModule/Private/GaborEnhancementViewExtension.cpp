@@ -6,7 +6,7 @@
 #include "RenderGraphUtils.h"
 
 
-FGaborEnhancementViewExtension::FGaborEnhancementViewExtension(const FAutoRegister& auto_register, FVector2f foveation_center, float radius_fovea, float radius_periphery, float screen_width_cm, float screen_height_cm, float distance_from_screen_cm, float blur_rate_arcmin_per_degree, float s_k, unsigned int cells, unsigned int impulses_per_cell, unsigned int seed) :
+FGaborEnhancementViewExtension::FGaborEnhancementViewExtension(const FAutoRegister& auto_register, FVector2f foveation_center, float radius_fovea, float radius_periphery, float screen_width_cm, float screen_height_cm, float distance_from_screen_cm, float blur_rate_arcmin_per_degree, unsigned int use_radially_increasing_blur, float s_k, unsigned int cells, unsigned int impulses_per_cell, unsigned int seed) :
 	FSceneViewExtensionBase(auto_register),
 	foveation_center(foveation_center),
 	radius_fovea(radius_fovea),
@@ -15,6 +15,7 @@ FGaborEnhancementViewExtension::FGaborEnhancementViewExtension(const FAutoRegist
     screen_height_cm(screen_height_cm),
 	distance_from_screen_cm(distance_from_screen_cm),
 	blur_rate_arcmin_per_degree(blur_rate_arcmin_per_degree),
+	use_radially_increasing_blur(use_radially_increasing_blur),
 	s_k(s_k),
 	cells(cells),
 	impulses_per_cell(impulses_per_cell),
@@ -50,6 +51,8 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	blur_params->screen_width_cm = screen_width_cm;
 	blur_params->screen_height_cm = screen_height_cm;
 	blur_params->distance_from_screen = distance_from_screen_cm; // for gaussian blur, it's just called "distance_from_screen"
+	blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
+	blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
 
 	const FIntVector group_count(
 		FMath::DivideAndRoundUp(desc.Extent.X, 16),
@@ -84,6 +87,7 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	noise_params->screen_height_cm = screen_height_cm;
 	noise_params->distance_from_screen_cm = distance_from_screen_cm;
 	noise_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
+	noise_params->use_radially_increasing_blur = use_radially_increasing_blur;
 	noise_params->s_k = s_k;
 	noise_params->cells = cells;
 	noise_params->impulses_per_cell = impulses_per_cell;

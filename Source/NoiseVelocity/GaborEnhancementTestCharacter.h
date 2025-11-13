@@ -31,4 +31,10 @@ public:
 
 	TSharedPtr<FGaborEnhancementViewExtension, ESPMode::ThreadSafe> view_extension;
 	
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float blur_rate_arcmin_per_degree = 0.34;
+	
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int use_radially_increasing_blur = 0;
+
 };
