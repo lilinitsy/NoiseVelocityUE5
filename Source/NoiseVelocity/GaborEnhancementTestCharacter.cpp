@@ -27,7 +27,7 @@ void AGaborEnhancementTestCharacter::BeginPlay()
 	const float blur_rate_arcmin_per_degree = 0.34f;
 	const float s_k = 21.02f;
 	const unsigned int cells = 64;
-	const unsigned int impulses_per_cell = 8;
+	const unsigned int impulses_per_cell = 32;
 	const unsigned int seed = 10;
 
 	view_extension = FSceneViewExtensions::NewExtension<FGaborEnhancementViewExtension>(
@@ -42,7 +42,6 @@ void AGaborEnhancementTestCharacter::BeginPlay()
 		cells,
 		impulses_per_cell,
 		seed);
-
 }
 
 // Called every frame

@@ -250,11 +250,10 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	}
 	
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
-	float2 centre = float2(0.5f, 0.5f);
 	
 	// DO NOT RENDER FOVEA
 	// TODO: add radius_fovea and radius_periphery here and use those instead.
-	if (length(centre - uv) <= 0.1f)
+	if (length(foveation_center - uv) <= 0.2f)
 	{
 		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
 		return;
@@ -264,32 +263,24 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	
 	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
 	
-	// Calculate pixels per degree
 	float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
-	
-	// Calculate per-pixel blur sigma
-	float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center, ppd, blur_rate_arcmin_per_degree);
-	
-	// Frequency bounds (using Python defaults: fl_tbl_min = 1/512, fh_limit = 0.5)
+	float foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
+	float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
 	float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
 	float F_L = freq_bounds.x;
 	float F_H = freq_bounds.y;
-	
-	// Orientation estimation
 	float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
 	
-	// Amplitude from Laplacian (using Python default: a = 0.25)
+	// Amplitude from Laplacian (a = 0.25)
 	float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
 	float amp = amplitude_from_laplacian(uv, input_foveated, LinearSampler, l_a, s_k);
 	
-	// Smoothstep weight (0 in fovea, 1 in periphery) - from Python: smoothstep(sigma_map, 0.5, 2.0)
 	float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
 	amp *= w;
 	
-	// Synthesize Gabor noise
 	float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
 		
-	// Apply noise to luminance (RGB to Y conversion from Python)
+	// Apply noise to luminance
 	float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
 	float Yn = saturate(Y + noise);
 	
