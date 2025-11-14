@@ -66,6 +66,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementParameters, )
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, input_foveated)
 	SHADER_PARAMETER_SAMPLER(SamplerState, LinearSampler)
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_texture)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_noise_texture)
 
 	SHADER_PARAMETER(FVector2f, foveation_center)
 	SHADER_PARAMETER(float, screen_width_cm)

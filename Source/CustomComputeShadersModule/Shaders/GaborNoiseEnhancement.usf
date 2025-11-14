@@ -6,6 +6,7 @@
 Texture2D input_foveated;
 SamplerState LinearSampler;
 RWTexture2D<float4> output_texture;
+RWTexture2D<float4> output_noise_texture;
 
 float2 foveation_center;
 float screen_width_cm;
@@ -256,6 +257,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	if (length(foveation_center - uv) <= 0.2f)
 	{
 		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
+		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f); // no noise
 		return;
 	}
 
@@ -290,6 +292,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	
 	output_texture[pixel_pos] = float4(final_colour, 1.0);
 
+	output_noise_texture[pixel_pos] = noise;
 	// Test to see if noise works:
 	//output_texture[pixel_pos] = float4(noise, noise, noise, 1.0f);
 }

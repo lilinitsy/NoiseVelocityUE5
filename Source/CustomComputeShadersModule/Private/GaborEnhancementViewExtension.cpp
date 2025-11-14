@@ -73,14 +73,16 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	FGenerateMips::Execute(graph_builder, GMaxRHIFeatureLevel, blur_output, generate_mips_params);
 
 	// gabor noise
+	FRDGTextureRef combined_noise_output = graph_builder.CreateTexture(desc, TEXT("gabor_combined_noise_output"));
 	FRDGTextureRef noise_output = graph_builder.CreateTexture(desc, TEXT("gabor_noise_output"));
 
 	TShaderMapRef<FGaborNoiseEnhancementCS> noise_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	FGaborNoiseEnhancementCS::FParameters* noise_params = graph_builder.AllocParameters<FGaborNoiseEnhancementCS::FParameters>();
 
-	noise_params->input_foveated = blur_output;								// <-- chain
+	noise_params->input_foveated = blur_output;
 	noise_params->LinearSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
-	noise_params->output_texture = graph_builder.CreateUAV(noise_output);
+	noise_params->output_texture = graph_builder.CreateUAV(combined_noise_output);
+	noise_params->output_noise_texture = graph_builder.CreateUAV(noise_output);
 
 	noise_params->foveation_center = foveation_center;
 	noise_params->screen_width_cm = screen_width_cm;
