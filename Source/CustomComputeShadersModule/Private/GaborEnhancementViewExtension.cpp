@@ -31,8 +31,8 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	const FPostProcessingInputs& inputs)
 {
 
-	FRDGTextureRef scene_color = (*inputs.SceneTextures)->SceneColorTexture;
-	FRDGTextureDesc desc = scene_color->Desc;
+	FRDGTextureRef scene_colour = (*inputs.SceneTextures)->SceneColorTexture;
+	FRDGTextureDesc desc = scene_colour->Desc;
 	desc.Flags |= TexCreate_UAV;
 	desc.NumMips = 5;
 
@@ -41,7 +41,7 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	TShaderMapRef<FGaussianBlurCS> blur_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	FGaussianBlurCS::FParameters* blur_params = graph_builder.AllocParameters<FGaussianBlurCS::FParameters>();
 
-	blur_params->input_texture = scene_color;
+	blur_params->input_texture = scene_colour;
 	blur_params->Input_Sampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
 	blur_params->output_texture = graph_builder.CreateUAV(blur_output);
 
@@ -111,6 +111,7 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	
 
 	// copy final back to scene colour
-	AddCopyTexturePass(graph_builder, noise_output, scene_color);
+	AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour); 
+	//AddCopyTexturePass(graph_builder, noise_output, scene_colour);
 }
 

@@ -12,5 +12,16 @@ public class NoiseVelocityEditorTarget : TargetRules
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_6;
 		ExtraModuleNames.Add("NoiseVelocity");
 		ExtraModuleNames.Add("CustomComputeShadersModule");
+
+		// This might build the unreal lightmass tool too?
+
+		PreBuildTargets.Add(
+			new TargetInfo(
+				"UnrealLightmass", 
+				Target.Platform, 
+				Target.Configuration, 
+				Target.Architectures,
+				null, 
+				Target.Arguments));
 	}
 }
