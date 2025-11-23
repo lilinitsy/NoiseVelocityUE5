@@ -118,7 +118,10 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 			{
 				FComputeShaderUtils::Dispatch(rhi_cmd_list, noise_cs, *noise_params, gabor_group_count);
 			});
-	
+
+		// cache textures, no flags needed since this resource will be held a while
+		graph_builder.QueueTextureExtraction(combined_noise_output, &cached_base_rendered_image, ERDGResourceExtractionFlags::None);
+		graph_builder.QueueTextureExtraction(noise_output, &cached_noise_texture, ERDGResourceExtractionFlags::None);
 
 		// copy final back to scene colour
 		AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour); 
