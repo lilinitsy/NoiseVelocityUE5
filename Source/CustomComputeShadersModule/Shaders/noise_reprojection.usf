@@ -25,6 +25,9 @@ void main_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
 	float4 pixel_colour = input_foveated.SampleLevel(point_sampler, uv, 0);
 	float2 velocity = motion_vector_texture.SampleLevel(point_sampler, uv, 0).xy;
+
+	// Unreal encodes velocity with 0 at 0.5, 0.5, scale to get direction
+	velocity = velocity * 2.0f - 1.0f;
 	float2 prev_uv = uv + velocity;
 	bool valid = all(prev_uv >= 0.0) && all(prev_uv <= 1.0);
 
@@ -35,4 +38,8 @@ void main_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 	reprojected_noise_texture[pixel_pos] = reprojected_noise;
 	output_texture[pixel_pos] = pixel_colour + reprojected_noise;
+
+	// Debug: Visualize motion
+	//reprojected_noise_texture[pixel_pos] = reprojected_noise;
+	//output_texture[pixel_pos] = float4(velocity, 0.0f, 1.0f);
 }
