@@ -71,6 +71,7 @@ float4 gaussian_blur(Texture2D<float4> tex, uint2 coord, uint2 frame_size, float
 [numthreads(16, 16, 1)]
 void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
 {
+    uint2 pixel_pos = id.xy;
     uint width, height;
     input_texture.GetDimensions(width, height);
 
@@ -80,6 +81,13 @@ void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
     }
 
     float2 uv = (float2)id.xy / float2(width, height);
+
+    if (length(foveation_center - uv) <= 0.2f)
+    {
+        output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
+        return;
+    }
+
     float2 screen_dims_cm = float2(screen_width_cm, screen_height_cm);
 
     float ecc = eccentricity(uv, foveation_center, distance_from_screen, screen_dims_cm);
@@ -142,7 +150,7 @@ void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
         }
     }
 
-    output_texture[id.xy] = sample_colour;
+    output_texture[pixel_pos] = sample_colour;
 }
 
 

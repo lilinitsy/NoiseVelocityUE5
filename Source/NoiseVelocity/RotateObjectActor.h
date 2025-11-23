@@ -30,5 +30,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float rotation_deg_per_second = 90.0f;
 	
-	AActor *rotating_object = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
+	AActor* rotating_object;
+
+
+	//AActor *rotating_object = nullptr;
 };

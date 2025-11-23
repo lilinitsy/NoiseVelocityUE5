@@ -5,6 +5,8 @@
 
 Texture2D input_foveated;
 SamplerState LinearSampler;
+Texture2D motion_vector_texture;
+SamplerState motion_vector_sampler;
 RWTexture2D<float4> output_texture;
 RWTexture2D<float4> output_noise_texture;
 
@@ -264,6 +266,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float2 texel_size = 1.0 / float2(texture_size);
 	
 	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
+	float2 motion_vector = motion_vector_texture.SampleLevel(motion_vector_sampler, uv, 0).xy;
 	
 	float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
 	float foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map

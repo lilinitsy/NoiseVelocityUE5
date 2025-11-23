@@ -112,6 +112,5 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 
 	// copy final back to scene colour
 	AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour); 
-	//AddCopyTexturePass(graph_builder, noise_output, scene_colour);
 }
 

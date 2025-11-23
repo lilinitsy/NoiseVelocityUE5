@@ -14,14 +14,14 @@ public:
     virtual void PrePostProcessPass_RenderThread(FRDGBuilder& graph_builder, const FSceneView& view, const FPostProcessingInputs& inputs) override;
 
     FVector2f foveation_center;
-    float radius_fovea; // for gaussian blur usage
-    float radius_periphery; // for gaussian blur
-    float screen_width_cm;
-    float screen_height_cm;
-    float distance_from_screen_cm;
-    float blur_rate_arcmin_per_degree;
-    unsigned int use_radially_increasing_blur;
-    float s_k;
+	const float        radius_fovea;     // for gaussian blur usage
+	const float        radius_periphery; // for gaussian blur
+	const float        screen_width_cm;
+	const float        screen_height_cm;
+	const float        distance_from_screen_cm;
+	const float        blur_rate_arcmin_per_degree;
+	const unsigned int use_radially_increasing_blur;
+	const float        s_k;
 
     unsigned int cells;
 	unsigned int impulses_per_cell;

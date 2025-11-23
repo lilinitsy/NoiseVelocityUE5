@@ -13,3 +13,5 @@ IMPLEMENT_SHADER_TYPE(, FGaussianBlurCS, TEXT("/CustomComputeShadersModule/Gauss
 // Noise enhancement (runs after blurring or downsampled rendering)
 IMPLEMENT_SHADER_TYPE(, FGaborNoiseEnhancementCS, TEXT("/CustomComputeShadersModule/GaborNoiseEnhancement.usf"), TEXT("gabor_foveated_enhance_cs"), SF_Compute);
 
+// Don't need one for the gabor noise with reprojection since it's two shaders that use the noise enhancement and the noise reprojection
+IMPLEMENT_SHADER_TYPE(, FNoiseReprojectionCS, TEXT("/CustomComputeShadersModule/noise_reprojection.usf"), TEXT("main_cs"), SF_Compute);

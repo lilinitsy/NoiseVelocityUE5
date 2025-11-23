@@ -36,5 +36,4 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int use_radially_increasing_blur = 0;
-
 };

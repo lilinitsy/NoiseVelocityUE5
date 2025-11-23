@@ -2,6 +2,7 @@
 
 
 #include "RotateObjectActor.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
@@ -17,17 +18,28 @@ void ARotateObjectActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	for (AActor* actor : GetWorld()->GetLevel(0)->Actors)
+	//TArray<AActor*> found_actors;
+	//UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName(*tag_to_find), found_actors);
+
+	/*if (found_actors.Num() > 0)
 	{
-		if (actor)
+		rotating_object = found_actors[0];
+
+		// Ensure that the actor is movable
+		if (USceneComponent* root = rotating_object->GetRootComponent())
 		{
-			if (actor->Tags.Contains(tag_to_find))
-			{
-				rotating_object = actor;
-			}
+			root->SetMobility(EComponentMobility::Movable);
+		}
+	}*/
+	// Ensure that the actor is movable
+	if(rotating_object)
+	{
+		USceneComponent* root = rotating_object->GetRootComponent();
+		if(root)
+		{
+			root->SetMobility(EComponentMobility::Movable);
 		}
 	}
-	
 }
 
 // Called every frame
@@ -38,11 +50,17 @@ void ARotateObjectActor::Tick(float DeltaTime)
 	if (rotating_object)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Actor found"));
+
+		float delta_rotation = rotation_deg_per_second * DeltaTime;
+
+		// rotate around z axis
+		rotating_object->AddActorLocalRotation(FRotator(0.0f, 0.0f, delta_rotation));
 	}
 
 	else
 	{
-		UE_LOG(LogTemp, Log, TEXT("NOT FOUND"));
+		UE_LOG(LogTemp, Log, TEXT("NO ACTOR FOUND"));
+
 	}
 }
 
