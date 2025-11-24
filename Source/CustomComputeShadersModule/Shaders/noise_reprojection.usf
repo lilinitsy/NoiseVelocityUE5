@@ -28,13 +28,24 @@ void main_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 	// Unreal encodes velocity with 0 at 0.5, 0.5, scale to get direction
 	velocity = velocity * 2.0f - 1.0f;
+	
+	//velocity = velocity - 0.5f;
+
 	float2 prev_uv = uv + velocity;
-	bool valid = all(prev_uv >= 0.0) && all(prev_uv <= 1.0);
+	bool valid = all(prev_uv >= 0.0) && all(prev_uv <= 1.0) && length(velocity) > 1e-2;
 
 	if(valid)
 	{
-		reprojected_noise = previous_noise_texture.SampleLevel(linear_sampler, prev_uv, 0);
+		reprojected_noise = previous_noise_texture.SampleLevel(point_sampler, prev_uv, 0);
 	}
+
+	// Reuse the noise in the same location
+	else
+	{
+		reprojected_noise = previous_noise_texture.SampleLevel(point_sampler, uv, 0);
+	}
+
+	// Need an else condition to not reproject the noise?
 
 	reprojected_noise_texture[pixel_pos] = reprojected_noise;
 	output_texture[pixel_pos] = pixel_colour + reprojected_noise;
@@ -42,4 +53,12 @@ void main_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	// Debug: Visualize motion
 	//reprojected_noise_texture[pixel_pos] = reprojected_noise;
 	//output_texture[pixel_pos] = float4(velocity, 0.0f, 1.0f);
+
+	// Debug: Is noise being written properly?
+	//output_texture[pixel_pos] = previous_noise_texture.SampleLevel(point_sampler, uv, 0);
+
+	// Debug: motion vector magnitude?
+	//float velocity_mag = length(velocity);
+	//output_texture[pixel_pos] = float4(velocity_mag, velocity_mag, velocity_mag, 1.0f);
+
 }

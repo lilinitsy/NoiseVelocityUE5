@@ -77,7 +77,10 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 			{
 				FComputeShaderUtils::Dispatch(rhi_cmd_list, blur_cs, *blur_params, group_count);
 			});
-	
+
+		graph_builder.QueueTextureExtraction(blur_output, &cached_base_rendered_image, ERDGResourceExtractionFlags::None);
+
+
 		// Generate mips so that the amplitude estimator works
 		FGenerateMipsParams generate_mips_params = {};
 		FGenerateMips::Execute(graph_builder, GMaxRHIFeatureLevel, blur_output, generate_mips_params);
@@ -120,7 +123,6 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 			});
 
 		// cache textures, no flags needed since this resource will be held a while
-		graph_builder.QueueTextureExtraction(combined_noise_output, &cached_base_rendered_image, ERDGResourceExtractionFlags::None);
 		graph_builder.QueueTextureExtraction(noise_output, &cached_noise_texture, ERDGResourceExtractionFlags::None);
 
 		// copy final back to scene colour
