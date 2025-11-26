@@ -24,15 +24,18 @@ void main_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float4 reprojected_noise = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
 	float4 pixel_colour = input_foveated.SampleLevel(point_sampler, uv, 0);
-	float2 velocity = motion_vector_texture.SampleLevel(point_sampler, uv, 0).xy;
+	float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0); // Velocity is encoded as float4 and needs to be converted
+
+
+	// Common.ush has EncodeVelocityToTexture and DecodeVelocityFromTexture functions
+	float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
 
 	// Unreal encodes velocity with 0 at 0.5, 0.5, scale to get direction
-	velocity = velocity * 2.0f - 1.0f;
-	
-	//velocity = velocity - 0.5f;
+	//velocity = velocity * 2.0f - 1.0f;
+	//velocity.y *= -1.0f;
 
-	float2 prev_uv = uv + velocity;
-	bool valid = all(prev_uv >= 0.0) && all(prev_uv <= 1.0) && length(velocity) > 1e-2;
+	float2 prev_uv = uv - velocity_decoded;
+	bool valid = all(prev_uv >= 0.0) && all(prev_uv <= 1.0) && length(velocity_decoded) > 1e-2;
 
 	if(valid)
 	{
@@ -44,8 +47,6 @@ void main_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	{
 		reprojected_noise = previous_noise_texture.SampleLevel(point_sampler, uv, 0);
 	}
-
-	// Need an else condition to not reproject the noise?
 
 	reprojected_noise_texture[pixel_pos] = reprojected_noise;
 	output_texture[pixel_pos] = pixel_colour + reprojected_noise;

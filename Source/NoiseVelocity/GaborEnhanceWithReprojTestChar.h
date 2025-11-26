@@ -41,4 +41,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int render_every_n_frames = 1;
 
+	// Keep to 0 if no rotation
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float rotation_speed = 0.0f;
+
 };

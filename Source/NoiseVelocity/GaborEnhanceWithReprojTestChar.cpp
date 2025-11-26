@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "GaborEnhanceWithReprojTestChar.h"
 
 
@@ -48,7 +47,8 @@ void AGaborEnhanceWithReprojTestChar::BeginPlay()
 void AGaborEnhanceWithReprojTestChar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	float delta_rotation = rotation_speed * DeltaTime;
+	AddActorLocalRotation(FRotator(0.0f, delta_rotation, 0.0f));
 }
 
 // Called to bind functionality to input

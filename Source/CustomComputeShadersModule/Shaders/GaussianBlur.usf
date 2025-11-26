@@ -43,18 +43,18 @@ float4 gaussian_blur(Texture2D<float4> tex, uint2 coord, uint2 frame_size, float
     for (int y = -kernel_radius; y <= kernel_radius; ++y)
     {
         [loop]
-            for (int x = -kernel_radius; x <= kernel_radius; ++x)
-            {
-                int2 samplecoord = int2(coord) + int2(x, y);
-                samplecoord = clamp(samplecoord, int2(0, 0), int2(frame_size) - 1);
+        for (int x = -kernel_radius; x <= kernel_radius; ++x)
+        {
+            int2 samplecoord = int2(coord) + int2(x, y);
+            samplecoord = clamp(samplecoord, int2(0, 0), int2(frame_size) - 1);
 
-                float dist_squared = float(x * x + y * y);
-                float weight = exp(-0.5f * dist_squared / (sigma * sigma));
+            float dist_squared = float(x * x + y * y);
+            float weight = exp(-0.5f * dist_squared / (sigma * sigma));
 
-                float4 sample = tex.Load(int3(samplecoord, 0));
-                colour += sample * weight;
-                total_weight += weight;
-            }
+            float4 sample = tex.Load(int3(samplecoord, 0));
+            colour += sample * weight;
+            total_weight += weight;
+        }
     }
 
     if (total_weight > 0.0f)

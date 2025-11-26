@@ -165,7 +165,6 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 				});
 
 			graph_builder.QueueTextureExtraction(reprojected_noise, &cached_noise_texture);
-
 			AddCopyTexturePass(graph_builder, composite_output, scene_colour);
 		}
 	}
