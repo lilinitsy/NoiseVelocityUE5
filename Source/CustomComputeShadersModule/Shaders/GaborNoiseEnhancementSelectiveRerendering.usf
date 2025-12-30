@@ -24,6 +24,41 @@ uint seed;
 // Include ONLY the functions needed for Gabor noise generation
 // Copy these directly from GaborNoiseEnhancement.usf - no modifications
 
+
+float2 safe_normalize(float2 v)
+{
+	float len2 = dot(v, v);
+	if (len2 < EPSILON) 
+	{
+		return float2(1.0, 0.0);
+	}
+	return v * rsqrt(len2);
+}
+
+float2 rotate2d(float2 v, float theta)
+{
+	float c = cos(theta);
+	float s = sin(theta);
+	return float2(
+		v.x * c + v.y * s,
+		-v.x * s + v.y * c
+	);
+}
+
+float2 stretch_along_dir(float2 v, float2 dir_unit, float stretch)
+{
+	float2 d = dir_unit;
+	float2 p = float2(-d.y, d.x);
+
+	float t = dot(v, d);
+	float u = dot(v, p);
+
+	t /= max(stretch, EPSILON);
+
+	return d * t + p * u;
+}
+
+
 float pixels_per_degree(float screen_width_px, float screen_width_cm, float distance_cm)
 {
 	float cm_per_pixel = screen_width_cm / screen_width_px;
@@ -104,6 +139,23 @@ float amplitude_from_laplacian(float2 uv, Texture2D tex, SamplerState samp, floa
 	return s_k_val * amp;
 }
 
+float gabor_kernel_stretched(float2 offset, float  freq, float  theta, float2 motion_dir_unit, float  stretch)
+{
+	float2 rotated = rotate2d(offset, theta);
+	float2 m_rot = safe_normalize(rotate2d(motion_dir_unit, theta));
+
+	// Stretch Gaussian envelope along motion direction
+	float2 rotated_stretched = stretch_along_dir(rotated, m_rot, stretch);
+
+	float sigma    = 0.5 / max(freq, 1e-6);
+	float gaussian = exp(-dot(rotated_stretched, rotated_stretched) / (2.0 * sigma * sigma));
+	float sinusoid = cos(2.0 * PI * freq * rotated.x);
+
+	return gaussian * sinusoid;
+}
+
+
+
 float gabor_kernel(float2 offset, float freq, float theta)
 {
 	float cos_theta = cos(theta);
@@ -140,6 +192,91 @@ int random_int(inout uint state, int min_val, int max_val)
 {
 	return min_val + int(random_float(state) * float(max_val - min_val));
 }
+
+
+float synthesize_gabor_noise_stretched(uint2 pixel_pos,
+	uint2 texture_size,
+	float F_L,
+	float F_H,
+	float amp,
+	float theta,
+	uint num_cells,
+	uint num_impulses,
+	uint rng_seed,
+	float2 velocity,
+	float stretch_per_unit_velocity)
+{
+	float noise = 0.0;
+
+	uint cell_h = texture_size.y / num_cells;
+	uint cell_w = texture_size.x / num_cells;
+
+	int cell_y = int(pixel_pos.y) / int(cell_h);
+	int cell_x = int(pixel_pos.x) / int(cell_w);
+
+	float vel_mag = length(velocity);
+	float2 motion_dir_unit = safe_normalize(velocity);
+
+	// Unbounded stretch
+	float stretch = 1.0 + max(0.0, stretch_per_unit_velocity) * vel_mag;
+
+	for (int dy = -1; dy <= 1; dy++)
+	{
+		for (int dx = -1; dx <= 1; dx++)
+		{
+			int cy = cell_y + dy;
+			int cx = cell_x + dx;
+
+			if (cy < 0 || cy >= int(num_cells) || cx < 0 || cx >= int(num_cells))
+			{
+				continue;
+			}
+
+			uint cell_seed = rng_seed + cy * num_cells + cx;
+			uint rng_state = wang_hash(cell_seed);
+
+			uint y0 = cy * cell_h;
+			uint x0 = cx * cell_w;
+			uint y1 = min(texture_size.y, y0 + cell_h);
+			uint x1 = min(texture_size.x, x0 + cell_w);
+
+			for (uint i = 0; i < num_impulses; i++)
+			{
+				uint impulse_y = random_int(rng_state, y0, y1);
+				uint impulse_x = random_int(rng_state, x0, x1);
+
+				float fl = F_L;
+				float fh = F_H;
+				float log_mean = log(sqrt(fl * fh));
+				float log_std = 0.25;
+
+				float u1 = max(random_float(rng_state), 1e-6);
+				float u2 = random_float(rng_state);
+				float random_normal = sqrt(-2.0 * log(u1)) * cos(2.0 * PI * u2);
+
+				float fcpp = exp(log_mean + log_std * random_normal);
+				fcpp = clamp(fcpp, fl, fh);
+
+				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
+				float kernel_radius = 3.5 / max(fcpp, 1e-6);
+
+				if (length(offset) <= kernel_radius * stretch)
+				{
+					float kernel_val = gabor_kernel_stretched(offset, fcpp, theta, motion_dir_unit, stretch);
+					noise += amp * kernel_val;
+				}
+			}
+		}
+	}
+
+	return noise;
+}
+
+
+
+
+
+
 
 float synthesize_gabor_noise(uint2 pixel_pos,
 	uint2 texture_size,
@@ -227,7 +364,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float velocity_magnitude = length(velocity_decoded);
 
 	float noise_value = 0.0;
-	float motion_threshold = 0.0001;
+	float motion_threshold = 0.001;
 
 	// HIGH MOTION: Regenerate noise
 	if (velocity_magnitude > motion_threshold)
@@ -248,7 +385,25 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
 		amp *= w;
 
-		noise_value = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
+		// For non-stretched version
+		//noise_value = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
+
+		// For stretched version
+		float stretch_per_unit_velocity = 100.0f;
+		noise_value = synthesize_gabor_noise_stretched(
+			pixel_pos,
+			texture_size,
+			F_L,
+			F_H,
+			amp,
+			theta,
+			cells,
+			impulses_per_cell,
+			seed,
+			velocity_decoded,
+			stretch_per_unit_velocity
+		);
+
 	}
 	// LOW MOTION: Reuse previous noise
 	else
