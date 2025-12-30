@@ -167,7 +167,9 @@ float synthesize_gabor_noise(uint2 pixel_pos,
 			int cx = cell_x + dx;
 
 			if (cy < 0 || cy >= int(num_cells) || cx < 0 || cx >= int(num_cells))
+			{
 				continue;
+			}
 
 			uint cell_seed = rng_seed + cy * num_cells + cx;
 			uint rng_state = wang_hash(cell_seed);
@@ -186,8 +188,7 @@ float synthesize_gabor_noise(uint2 pixel_pos,
 				float fh = F_H;
 				float log_mean = log(sqrt(fl * fh));
 				float log_std = 0.25;
-				float random_normal = sqrt(-2.0 * log(random_float(rng_state))) *
-					cos(2.0 * PI * random_float(rng_state));
+				float random_normal = sqrt(-2.0 * log(random_float(rng_state))) * cos(2.0 * PI * random_float(rng_state));
 				float fcpp = exp(log_mean + log_std * random_normal);
 				fcpp = clamp(fcpp, fl, fh);
 
@@ -237,8 +238,8 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
 
 		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
-		float F_L = freq_bounds.x;
-		float F_H = freq_bounds.y;
+		float F_L = freq_bounds.x * 0.5f; // LOWER the frequencies for masking
+		float F_H = freq_bounds.y * 0.5f; // LOWER the frequencies for masking
 
 		float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
 		float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
