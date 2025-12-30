@@ -12,8 +12,8 @@ FGaborEnhancementWithReprojectionViewExtension::FGaborEnhancementWithReprojectio
 	foveation_center(foveation_center),
 	radius_fovea(radius_fovea),
 	radius_periphery(radius_periphery),
-    screen_width_cm(screen_width_cm),
-    screen_height_cm(screen_height_cm),
+	screen_width_cm(screen_width_cm),
+	screen_height_cm(screen_height_cm),
 	distance_from_screen_cm(distance_from_screen_cm),
 	blur_rate_arcmin_per_degree(blur_rate_arcmin_per_degree),
 	use_radially_increasing_blur(use_radially_increasing_blur),
@@ -44,7 +44,7 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 
 	FRDGTextureRef final_output = nullptr;
 
-	if(should_render_full_frame)
+	if (should_render_full_frame)
 	{
 		FRDGTextureRef blur_output = graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
 
@@ -63,7 +63,7 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 		blur_params->distance_from_screen = distance_from_screen_cm; // for gaussian blur, it's just called "distance_from_screen"
 		blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
 		blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
-
+			
 		const FIntVector group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),
 			FMath::DivideAndRoundUp(desc.Extent.Y, 16),
@@ -126,7 +126,7 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 		graph_builder.QueueTextureExtraction(noise_output, &cached_noise_texture, ERDGResourceExtractionFlags::None);
 
 		// copy final back to scene colour
-		AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour); 
+		AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour);
 	}
 
 	else
@@ -169,4 +169,3 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 		}
 	}
 }
-

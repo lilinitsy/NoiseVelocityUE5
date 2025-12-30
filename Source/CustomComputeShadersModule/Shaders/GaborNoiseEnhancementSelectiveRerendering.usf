@@ -1,12 +1,12 @@
-// GaborNoiseEnhancement.usf
-
 #include "/Engine/Private/Common.ush"
-#include "/Engine/Private/Random.ush"
 
 Texture2D input_foveated;
-SamplerState LinearSampler;
+Texture2D previous_noise_texture;
+Texture2D motion_vector_texture;
+SamplerState point_sampler;
+SamplerState linear_sampler;
+RWTexture2D<float4> reprojected_noise_texture;
 RWTexture2D<float4> output_texture;
-RWTexture2D<float4> output_noise_texture;
 
 float2 foveation_center;
 float screen_width_cm;
@@ -18,21 +18,18 @@ uint cells;
 uint impulses_per_cell;
 uint seed;
 
-
-
-// Constants - These need to match the Python code!
 #define PI 3.14159265359
 #define EPSILON 1e-6
 
+// Include ONLY the functions needed for Gabor noise generation
+// Copy these directly from GaborNoiseEnhancement.usf - no modifications
 
 float pixels_per_degree(float screen_width_px, float screen_width_cm, float distance_cm)
 {
 	float cm_per_pixel = screen_width_cm / screen_width_px;
-	
 	float deg_rad = radians(1.0);
 	float size_cm = 2.0 * distance_cm * tan(deg_rad / 2.0);
 	float ppd = size_cm / cm_per_pixel;
-	
 	return ppd;
 }
 
@@ -40,10 +37,9 @@ float radial_sigma_map(float2 pixel_pos, float2 gaze_pos, float ppd, float blur_
 {
 	float dist_px = length(pixel_pos - gaze_pos);
 	float dist_deg = dist_px / ppd;
-	float blur_arcmin = blur_rate * dist_deg;	
+	float blur_arcmin = blur_rate * dist_deg;
 	float blur_deg = blur_arcmin / 60.0;
-	float sigma_px = (blur_deg * ppd) / 2.355; // FWHM to sigma conversion
-	
+	float sigma_px = (blur_deg * ppd) / 2.355;
 	return max(EPSILON, sigma_px);
 }
 
@@ -53,7 +49,6 @@ float2 freq_bounds_cpp(float sigma_pix, float fl_tbl_min, float fh_limit)
 	float F_L = 3.0 * sigma_f;
 	float F_H = fh_limit;
 	F_L = clamp(F_L, fl_tbl_min, F_H * 0.999);
-	
 	return float2(F_L, F_H);
 }
 
@@ -62,7 +57,6 @@ float choose_laplacian_level_from_sigma(float sigma_pix, float a)
 	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_pix));
 	float f_c = sqrt(-log(a)) / (PI * max(EPSILON, sigma_pix));
 	float l_a = -log2(max(EPSILON, f_c)) - 0.5;
-	
 	return l_a;
 }
 
@@ -72,80 +66,68 @@ float smoothstep_custom(float x, float edge0, float edge1)
 	return t * t * (3.0 - 2.0 * t);
 }
 
-
 float estimate_orientation(float2 uv, Texture2D tex, SamplerState samp, float2 texel_size)
 {
-	// Sample 3x3 neighborhood for Sobel
 	float tl = Luminance(tex.SampleLevel(samp, uv + float2(-1, -1) * texel_size, 0).rgb);
-	float tc = Luminance(tex.SampleLevel(samp, uv + float2( 0, -1) * texel_size, 0).rgb);
-	float tr = Luminance(tex.SampleLevel(samp, uv + float2( 1, -1) * texel_size, 0).rgb);
-	float ml = Luminance(tex.SampleLevel(samp, uv + float2(-1,  0) * texel_size, 0).rgb);
-	float mr = Luminance(tex.SampleLevel(samp, uv + float2( 1,  0) * texel_size, 0).rgb);
-	float bl = Luminance(tex.SampleLevel(samp, uv + float2(-1,  1) * texel_size, 0).rgb);
-	float bc = Luminance(tex.SampleLevel(samp, uv + float2( 0,  1) * texel_size, 0).rgb);
-	float br = Luminance(tex.SampleLevel(samp, uv + float2( 1,  1) * texel_size, 0).rgb);
-	
-	// Sobel operators
-	float gx = -tl + tr - 2.0*ml + 2.0*mr - bl + br;
-	float gy = -tl - 2.0*tc - tr + bl + 2.0*bc + br;
-	
+	float tc = Luminance(tex.SampleLevel(samp, uv + float2(0, -1) * texel_size, 0).rgb);
+	float tr = Luminance(tex.SampleLevel(samp, uv + float2(1, -1) * texel_size, 0).rgb);
+	float ml = Luminance(tex.SampleLevel(samp, uv + float2(-1, 0) * texel_size, 0).rgb);
+	float mr = Luminance(tex.SampleLevel(samp, uv + float2(1, 0) * texel_size, 0).rgb);
+	float bl = Luminance(tex.SampleLevel(samp, uv + float2(-1, 1) * texel_size, 0).rgb);
+	float bc = Luminance(tex.SampleLevel(samp, uv + float2(0, 1) * texel_size, 0).rgb);
+	float br = Luminance(tex.SampleLevel(samp, uv + float2(1, 1) * texel_size, 0).rgb);
+
+	float gx = -tl + tr - 2.0 * ml + 2.0 * mr - bl + br;
+	float gy = -tl - 2.0 * tc - tr + bl + 2.0 * bc + br;
+
 	return atan2(gy, gx);
 }
-
 
 float sample_laplacian(float2 uv, Texture2D tex, SamplerState samp, float level)
 {
 	float3 current_mip = tex.SampleLevel(samp, uv, level).rgb;
 	float3 lowres_mip = tex.SampleLevel(samp, uv, level + 1.0).rgb;
-	
-	// Laplacian = current - upsampled(coarser)
 	float3 laplacian = current_mip - lowres_mip;
-	
 	return length(laplacian);
 }
 
 float amplitude_from_laplacian(float2 uv, Texture2D tex, SamplerState samp, float l_a, float s_k_val)
 {
-	// assuming 5 mip levels, clamping to 3
 	int l0 = clamp(int(floor(l_a)), 0, 3);
 	int l1 = clamp(l0 + 1, 0, 3);
 	float t = frac(l_a);
-	
+
 	float A0 = sample_laplacian(uv, tex, samp, float(l0));
 	float A1 = sample_laplacian(uv, tex, samp, float(l1));
-	
+
 	float amp = lerp(A0, A1, t);
 	return s_k_val * amp;
 }
 
-
 float gabor_kernel(float2 offset, float freq, float theta)
 {
-	// Rotate offset by theta
 	float cos_theta = cos(theta);
 	float sin_theta = sin(theta);
 	float2 rotated = float2(
 		offset.x * cos_theta + offset.y * sin_theta,
 		-offset.x * sin_theta + offset.y * cos_theta
 	);
-	
-	// Gabor function
+
 	float sigma = 0.5 / freq;
 	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
 	float sinusoid = cos(2.0 * PI * freq * rotated.x);
-	
+
 	return gaussian * sinusoid;
 }
 
-
-uint wang_hash(uint seed)
+uint wang_hash(uint seed_val)
 {
-	seed = (seed ^ 61) ^ (seed >> 16);
-	seed *= 9;
-	seed = seed ^ (seed >> 4);
-	seed *= 0x27d4eb2d;
-	seed = seed ^ (seed >> 15);
-	return seed;
+	seed_val = (seed_val ^ 61) ^ (seed_val >> 16);
+	seed_val *= 9;
+	seed_val = seed_val ^ (seed_val >> 4);
+	seed_val *= 0x27d4eb2d;
+	seed_val = seed_val ^ (seed_val >> 15);
+	return seed_val;
 }
 
 float random_float(inout uint state)
@@ -154,78 +136,64 @@ float random_float(inout uint state)
 	return float(state) / 4294967296.0;
 }
 
-float random_range(inout uint state, float min_val, float max_val)
-{
-	return min_val + random_float(state) * (max_val - min_val);
-}
-
 int random_int(inout uint state, int min_val, int max_val)
 {
 	return min_val + int(random_float(state) * float(max_val - min_val));
 }
 
-
-float synthesize_gabor_noise(uint2 pixel_pos, 
-							uint2 texture_size, 
-							float F_L, 
-							float F_H, 
-							float amp, 
-							float theta, 
-							uint num_cells, 
-							uint num_impulses, 
-							uint rng_seed)
+float synthesize_gabor_noise(uint2 pixel_pos,
+	uint2 texture_size,
+	float F_L,
+	float F_H,
+	float amp,
+	float theta,
+	uint num_cells,
+	uint num_impulses,
+	uint rng_seed)
 {
 	float noise = 0.0;
-	
+
 	uint cell_h = texture_size.y / num_cells;
 	uint cell_w = texture_size.x / num_cells;
-	
-	// Determine cell of this pixel
+
 	int cell_y = int(pixel_pos.y) / int(cell_h);
 	int cell_x = int(pixel_pos.x) / int(cell_w);
-	
-	// Check surrounding cells to catch kernel overlap (3x3 neighborhood)
+
 	for (int dy = -1; dy <= 1; dy++)
 	{
 		for (int dx = -1; dx <= 1; dx++)
 		{
 			int cy = cell_y + dy;
 			int cx = cell_x + dx;
-			
+
 			if (cy < 0 || cy >= int(num_cells) || cx < 0 || cx >= int(num_cells))
 				continue;
-				
-			// Seed for this cell
+
 			uint cell_seed = rng_seed + cy * num_cells + cx;
 			uint rng_state = wang_hash(cell_seed);
-			
+
 			uint y0 = cy * cell_h;
 			uint x0 = cx * cell_w;
 			uint y1 = min(texture_size.y, y0 + cell_h);
 			uint x1 = min(texture_size.x, x0 + cell_w);
-			
-			// Generate impulses for this cell
+
 			for (uint i = 0; i < num_impulses; i++)
 			{
 				uint impulse_y = random_int(rng_state, y0, y1);
 				uint impulse_x = random_int(rng_state, x0, x1);
-				
-				// Log-normal frequency sampling (matching Python's crude log-normal)
+
 				float fl = F_L;
 				float fh = F_H;
 				float log_mean = log(sqrt(fl * fh));
 				float log_std = 0.25;
-				float random_normal = sqrt(-2.0 * log(random_float(rng_state))) * 
-									cos(2.0 * PI * random_float(rng_state));
+				float random_normal = sqrt(-2.0 * log(random_float(rng_state))) *
+					cos(2.0 * PI * random_float(rng_state));
 				float fcpp = exp(log_mean + log_std * random_normal);
 				fcpp = clamp(fcpp, fl, fh);
-				
-				// Calculate offset from impulse to current pixel
+
 				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
-				
-				// Kernel size
 				float kernel_radius = 3.5 / fcpp;
-				
+
 				if (length(offset) <= kernel_radius)
 				{
 					float kernel_val = gabor_kernel(offset, fcpp, theta);
@@ -234,67 +202,66 @@ float synthesize_gabor_noise(uint2 pixel_pos,
 			}
 		}
 	}
-	
+
 	return noise;
 }
 
-
 [numthreads(16, 16, 1)]
-void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
+void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 pixel_pos = DispatchThreadId.xy;
 	uint2 texture_size;
-	output_texture.GetDimensions(texture_size.x, texture_size.y);
-
-
+	reprojected_noise_texture.GetDimensions(texture_size.x, texture_size.y);
+	
 	if (pixel_pos.x >= texture_size.x || pixel_pos.y >= texture_size.y)
 	{
 		return;
 	}
-	
+
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
+	float3 foveated = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
 	
-	// DO NOT RENDER FOVEA
-	// TODO: add radius_fovea and radius_periphery here and use those instead.
-	if (length(foveation_center - uv) <= 0.2f)
+	float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0);
+	float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
+	float velocity_magnitude = length(velocity_decoded);
+
+	float noise_value = 0.0;
+	float motion_threshold = 0.0001;
+
+	// HIGH MOTION: Regenerate noise
+	if (velocity_magnitude > motion_threshold)
 	{
-		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
-		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f); // no noise
-		return;
+		float2 texel_size = 1.0 / float2(texture_size);
+		float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
+		float2 foveation_center_pixels = foveation_center * float2(texture_size);
+		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
+
+		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
+		float F_L = freq_bounds.x;
+		float F_H = freq_bounds.y;
+
+		float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
+		float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
+		float amp = amplitude_from_laplacian(uv, input_foveated, linear_sampler, l_a, s_k);
+
+		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
+		amp *= w;
+
+		noise_value = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
+	}
+	// LOW MOTION: Reuse previous noise
+	else
+	{
+		noise_value = previous_noise_texture.SampleLevel(point_sampler, uv, 0).r;
 	}
 
-	float2 texel_size = 1.0 / float2(texture_size);
-	
-	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
-	
-	float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
-	float2 foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
-	float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-	float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
-	float F_L = freq_bounds.x;
-	float F_H = freq_bounds.y;
-	float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
-	
-	// Amplitude from Laplacian (a = 0.25)
-	float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
-	float amp = amplitude_from_laplacian(uv, input_foveated, LinearSampler, l_a, s_k);
-	
-	float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
-	amp *= w;
-	
-	float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
-		
+	reprojected_noise_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
+
 	// Apply noise to luminance
 	float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
-	float Yn = saturate(Y + noise);
-	
-	// Scale colour by luminance change
+	float Yn = saturate(Y + noise_value);
 	float scale = (Yn + EPSILON) / (Y + EPSILON);
 	float3 final_colour = saturate(foveated * scale);
-	
-	output_texture[pixel_pos] = float4(final_colour, 1.0);
 
-	output_noise_texture[pixel_pos] = noise;
-	// Test to see if noise works:
-	//output_texture[pixel_pos] = float4(noise, noise, noise, 1.0f);
+	output_texture[pixel_pos] = float4(final_colour, 1.0);
 }

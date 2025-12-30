@@ -15,3 +15,7 @@ IMPLEMENT_SHADER_TYPE(, FGaborNoiseEnhancementCS, TEXT("/CustomComputeShadersMod
 
 // Don't need one for the gabor noise with reprojection since it's two shaders that use the noise enhancement and the noise reprojection
 IMPLEMENT_SHADER_TYPE(, FNoiseReprojectionCS, TEXT("/CustomComputeShadersModule/noise_reprojection.usf"), TEXT("main_cs"), SF_Compute);
+
+
+// Same entry point for rerendering noise enhancement
+IMPLEMENT_SHADER_TYPE(, FGaborNoiseEnhancementWithRerenderingCS, TEXT("/CustomComputeShadersModule/GaborNoiseEnhancementSelectiveRerendering.usf"), TEXT("selective_rerender_noise_cs"), SF_Compute);

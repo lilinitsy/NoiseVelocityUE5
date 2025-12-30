@@ -145,4 +145,38 @@ class FNoiseReprojectionCS : public FGlobalShader
 };
 
 
+// THESE USE GABOR ENHANCEMENT, BUT RERENDER NOISE EVERY FRAME, EVEN IF SHADING IS NOT UPDATED
+BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingParameters, )
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, input_foveated)
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, previous_noise_texture)
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, motion_vector_texture)
 
+	SHADER_PARAMETER_SAMPLER(SamplerState, linear_sampler)
+	SHADER_PARAMETER_SAMPLER(SamplerState, point_sampler)
+
+	//SHADER_PARAMETER_RDG_TEXTURE(Texture2D, depth_texture)
+	// SHADER_PARAMETER_RDG_TEXTURE(Texture2D, normal_texture)
+
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_texture)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_noise_texture)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, reprojected_noise_texture)
+	
+	//SHADER_PARAMETER(FMatrix44f, inv_view_projection_matrix)
+	SHADER_PARAMETER(FVector2f, foveation_center)
+	SHADER_PARAMETER(float, screen_width_cm)
+	SHADER_PARAMETER(float, screen_height_cm)
+	SHADER_PARAMETER(float, distance_from_screen_cm)
+	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
+	SHADER_PARAMETER(unsigned int, use_radially_increasing_blur)
+	SHADER_PARAMETER(float, s_k)
+	SHADER_PARAMETER(unsigned int, cells)
+	SHADER_PARAMETER(unsigned int, impulses_per_cell)
+	SHADER_PARAMETER(unsigned int, seed)
+END_SHADER_PARAMETER_STRUCT()
+class FGaborNoiseEnhancementWithRerenderingCS : public FGlobalShader
+{
+public:
+	DECLARE_EXPORTED_SHADER_TYPE(FGaborNoiseEnhancementWithRerenderingCS, Global, );
+	using FParameters = FGaborNoiseEnhancementWithRerenderingParameters;
+	SHADER_USE_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingCS, FGlobalShader);
+};
