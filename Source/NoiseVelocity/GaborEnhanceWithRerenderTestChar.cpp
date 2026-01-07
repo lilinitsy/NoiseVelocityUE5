@@ -41,7 +41,9 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 		s_k,
 		cells,
 		impulses_per_cell,
-		seed);
+		seed,
+		phase_cycles_per_sec,
+		phase_strength);
 
 
 }

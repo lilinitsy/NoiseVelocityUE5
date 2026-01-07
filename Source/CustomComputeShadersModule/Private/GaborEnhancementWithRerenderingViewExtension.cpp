@@ -18,7 +18,10 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	float s_k,
 	unsigned int cells,
 	unsigned int impulses_per_cell,
-	unsigned int seed) :
+	unsigned int seed,
+	float phase_cycles_per_sec,
+	float phase_strength
+) :
 	FSceneViewExtensionBase(auto_register),
 	render_every_n_frames(render_every_n_frames),
 	foveation_center(foveation_center),
@@ -33,7 +36,9 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	cells(cells),
 	impulses_per_cell(impulses_per_cell),
 	static_seed(seed),
-	dynamic_seed(seed)
+	dynamic_seed(seed),
+	phase_cycles_per_sec(phase_cycles_per_sec),
+	phase_strength(phase_strength)
 {
 }
 

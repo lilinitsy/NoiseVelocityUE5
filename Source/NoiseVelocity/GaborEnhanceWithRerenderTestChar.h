@@ -46,5 +46,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float rotation_speed = 0.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float phase_cycles_per_sec = 2.0f;
 	
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float phase_strength = 1.0f;
+
 };
