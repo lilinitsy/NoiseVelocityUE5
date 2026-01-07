@@ -23,16 +23,20 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Make sure this is added to Actor Tags, NOT Component Tags!
 	UPROPERTY(EditAnywhere, Category = "Settings")
-	FString tag_to_find;
+	FRotator rotation_deg_per_second = FRotator(0.0f, 0.0f, 90.0f);
 
 	UPROPERTY(EditAnywhere, Category = "Settings")
-	float rotation_deg_per_second = 90.0f;
-	
+	FVector translation_meters_per_second = FVector(0.0f, 0.0f, 0.0f);
+
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float oscillation_time = 1.0f; // how long to let it move before it bounces back and forth
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
-	AActor* rotating_object;
+	AActor* moving_object;
 
 
-	//AActor *rotating_object = nullptr;
+	// hidden for modulating the oscillation time
+	float running_oscillation_timer = 0.0f;
+
 };

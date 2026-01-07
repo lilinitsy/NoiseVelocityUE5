@@ -32,9 +32,9 @@ void ARotateObjectActor::BeginPlay()
 		}
 	}*/
 	// Ensure that the actor is movable
-	if(rotating_object)
+	if(moving_object)
 	{
-		USceneComponent* root = rotating_object->GetRootComponent();
+		USceneComponent* root = moving_object->GetRootComponent();
 		if(root)
 		{
 			root->SetMobility(EComponentMobility::Movable);
@@ -47,20 +47,27 @@ void ARotateObjectActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (rotating_object)
+	if (moving_object)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Actor found"));
+		FVector delta_translation = translation_meters_per_second * DeltaTime;
+		FRotator delta_rotation = rotation_deg_per_second * DeltaTime;
+		FTransform delta_transform = FTransform(delta_rotation, delta_translation, FVector(1.0f, 1.0f, 1.0f));
 
-		float delta_rotation = rotation_deg_per_second * DeltaTime;
-
-		// rotate around z axis
-		rotating_object->AddActorLocalRotation(FRotator(0.0f, 0.0f, delta_rotation));
+		// rotate around z axis and translate in given direction
+		moving_object->AddActorLocalTransform(delta_transform);
 	}
 
 	else
 	{
 		UE_LOG(LogTemp, Log, TEXT("NO ACTOR FOUND"));
 
+	}
+
+	running_oscillation_timer += DeltaTime;
+	if (running_oscillation_timer >= oscillation_time)
+	{
+		running_oscillation_timer = 0.0f;
+		translation_meters_per_second *= -1.0f;
 	}
 }
 
