@@ -170,7 +170,10 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->s_k = s_k;
 		noise_params->cells = cells;
 		noise_params->impulses_per_cell = impulses_per_cell;
-		noise_params->seed = dynamic_seed;
+		noise_params->seed = static_seed;
+		noise_params->time_seconds = (float) view.Family->Time.GetWorldTimeSeconds();
+		noise_params->phase_cycles_per_sec = 4.0f;
+		noise_params->phase_strength = 4.0f;
 
 		const FIntVector noise_group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),
@@ -196,4 +199,5 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		//AddCopyTexturePass(graph_builder, reprojected_noise, scene_colour);
 
 	}
+
 }

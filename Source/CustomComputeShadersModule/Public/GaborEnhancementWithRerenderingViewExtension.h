@@ -28,6 +28,7 @@ public:
 	TRefCountPtr<IPooledRenderTarget> cached_base_image;
 	TRefCountPtr<IPooledRenderTarget> cached_noise_texture;
 	uint32 frame_counter = 0;
+	float running_time = 0.0f;
 	const uint32 render_every_n_frames;
 
 	FVector2f foveation_center;

@@ -18,6 +18,10 @@ uint cells;
 uint impulses_per_cell;
 uint seed;
 
+float time_seconds; // monotonic time
+float phase_cycles_per_sec; // how many times per second it goes 0 -> 2PI -> 0
+float phase_strength; // Probably needs to be tuned... oscillation strength, gets multipled by velocity.
+
 #define PI 3.14159265359
 #define EPSILON 1e-6
 
@@ -139,7 +143,7 @@ float amplitude_from_laplacian(float2 uv, Texture2D tex, SamplerState samp, floa
 	return s_k_val * amp;
 }
 
-float gabor_kernel_stretched(float2 offset, float  freq, float  theta, float2 motion_dir_unit, float  stretch)
+float gabor_kernel_stretched(float2 offset, float  freq, float  theta, float2 motion_dir_unit, float  stretch, float phase_offset)
 {
 	float2 rotated = rotate2d(offset, theta);
 	float2 m_rot = safe_normalize(rotate2d(motion_dir_unit, theta));
@@ -149,7 +153,10 @@ float gabor_kernel_stretched(float2 offset, float  freq, float  theta, float2 mo
 
 	float sigma    = 0.5 / max(freq, 1e-6);
 	float gaussian = exp(-dot(rotated_stretched, rotated_stretched) / (2.0 * sigma * sigma));
-	float sinusoid = cos(2.0 * PI * freq * rotated.x);
+	float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot.x);
+	phase = frac(phase / (2.0 * PI)) * (2.0 * PI);
+	float sinusoid = cos(phase);
+	//float sinusoid = cos(2.0 * PI * freq * rotated.x);
 
 	return gaussian * sinusoid;
 }
@@ -204,7 +211,8 @@ float synthesize_gabor_noise_stretched(uint2 pixel_pos,
 	uint num_impulses,
 	uint rng_seed,
 	float2 velocity,
-	float stretch_per_unit_velocity)
+	float stretch_per_unit_velocity,
+	float phase_offset)
 {
 	float noise = 0.0;
 
@@ -262,7 +270,7 @@ float synthesize_gabor_noise_stretched(uint2 pixel_pos,
 
 				if (length(offset) <= kernel_radius * stretch)
 				{
-					float kernel_val = gabor_kernel_stretched(offset, fcpp, theta, motion_dir_unit, stretch);
+					float kernel_val = gabor_kernel_stretched(offset, fcpp, theta, motion_dir_unit, stretch, phase_offset);
 					noise += amp * kernel_val;
 				}
 			}
@@ -385,6 +393,11 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
 		amp *= w;
 
+		// This is going towards:
+		// phase = 2PI * frac(t * phase_cycles_per_sec) * (S * velocity_mag)
+		float t01 = frac(time_seconds * phase_cycles_per_sec);
+		float phase_offset = (t01 * 2.0f * PI) * (phase_strength * velocity_magnitude);
+
 		// For non-stretched version
 		//noise_value = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
 
@@ -401,10 +414,13 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			impulses_per_cell,
 			seed,
 			velocity_decoded,
-			stretch_per_unit_velocity
+			stretch_per_unit_velocity,
+			phase_offset
 		);
 
 	}
+
+
 	// LOW MOTION: Reuse previous noise
 	else
 	{
