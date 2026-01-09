@@ -60,7 +60,7 @@ float2 freq_bounds_cpp(float sigma_pix, float fl_tbl_min, float fh_limit)
 float choose_laplacian_level_from_sigma(float sigma_pix, float a)
 {
 	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_pix));
-	float f_c = sqrt(-log(a)) / (PI * max(EPSILON, sigma_pix));
+    float f_c = sqrt(-log(a)) / (PI * max(EPSILON, sigma_pix));
 	float l_a = -log2(max(EPSILON, f_c)) - 0.5;
 	
 	return l_a;

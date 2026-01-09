@@ -18,21 +18,15 @@ uint cells;
 uint impulses_per_cell;
 uint seed;
 
-float time_seconds; // monotonic time
-float phase_cycles_per_sec; // how many times per second it goes 0 -> 2PI -> 0
-float phase_strength; // Probably needs to be tuned... oscillation strength, gets multipled by velocity.
-
 #define PI 3.14159265359
 #define EPSILON 1e-6
-
-// Include ONLY the functions needed for Gabor noise generation
-// Copy these directly from GaborNoiseEnhancement.usf - no modifications
+#define INV_SQRT_12 0.2886751345948129
 
 
 float2 safe_normalize(float2 v)
 {
 	float len2 = dot(v, v);
-	if (len2 < EPSILON) 
+	if (len2 < EPSILON)
 	{
 		return float2(1.0, 0.0);
 	}
@@ -62,7 +56,6 @@ float2 stretch_along_dir(float2 v, float2 dir_unit, float stretch)
 	return d * t + p * u;
 }
 
-
 float pixels_per_degree(float screen_width_px, float screen_width_cm, float distance_cm)
 {
 	float cm_per_pixel = screen_width_cm / screen_width_px;
@@ -82,19 +75,19 @@ float radial_sigma_map(float2 pixel_pos, float2 gaze_pos, float ppd, float blur_
 	return max(EPSILON, sigma_px);
 }
 
-float2 freq_bounds_cpp(float sigma_pix, float fl_tbl_min, float fh_limit)
+float2 freq_bounds_cpp(float sigma_ecc, float fl_tbl_min, float fh_limit)
 {
-	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_pix));
+	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_ecc));
 	float F_L = 3.0 * sigma_f;
 	float F_H = fh_limit;
 	F_L = clamp(F_L, fl_tbl_min, F_H * 0.999);
 	return float2(F_L, F_H);
 }
 
-float choose_laplacian_level_from_sigma(float sigma_pix, float a)
+float choose_laplacian_level_from_sigma(float sigma_ecc, float a)
 {
-	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_pix));
-	float f_c = sqrt(-log(a)) / (PI * max(EPSILON, sigma_pix));
+	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_ecc));
+	float f_c = sqrt(-log(a)) / (PI * max(EPSILON, sigma_ecc));
 	float l_a = -log2(max(EPSILON, f_c)) - 0.5;
 	return l_a;
 }
@@ -143,25 +136,6 @@ float amplitude_from_laplacian(float2 uv, Texture2D tex, SamplerState samp, floa
 	return s_k_val * amp;
 }
 
-float gabor_kernel_stretched(float2 offset, float  freq, float  theta, float2 motion_dir_unit, float  stretch, float phase_offset)
-{
-	float2 rotated = rotate2d(offset, theta);
-	float2 m_rot = safe_normalize(rotate2d(motion_dir_unit, theta));
-
-	// Stretch Gaussian envelope along motion direction
-	float2 rotated_stretched = stretch_along_dir(rotated, m_rot, stretch);
-
-	float sigma    = 0.5 / max(freq, 1e-6);
-	float gaussian = exp(-dot(rotated_stretched, rotated_stretched) / (2.0 * sigma * sigma));
-	float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot.x);
-	phase = frac(phase / (2.0 * PI)) * (2.0 * PI);
-	float sinusoid = cos(phase);
-	//float sinusoid = cos(2.0 * PI * freq * rotated.x);
-
-	return gaussian * sinusoid;
-}
-
-
 uint wang_hash(uint seed_val)
 {
 	seed_val = (seed_val ^ 61) ^ (seed_val >> 16);
@@ -183,8 +157,19 @@ int random_int(inout uint state, int min_val, int max_val)
 	return min_val + int(random_float(state) * float(max_val - min_val));
 }
 
+float gabor_kernel_sigma_scaled(float2 offset, float freq, float theta, float envelope_scale)
+{
+	float2 rotated = rotate2d(offset, theta);
 
-float synthesize_gabor_noise_stretched(uint2 pixel_pos,
+	float sigma = (0.5 / max(freq, 1e-6)) * max(envelope_scale, 1e-6);
+	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
+	float sinusoid = cos(2.0 * PI * freq * rotated.x);
+
+	return gaussian * sinusoid;
+}
+
+float synthesize_gabor_noise_sigma_scaled(
+	uint2 pixel_pos,
 	uint2 texture_size,
 	float F_L,
 	float F_H,
@@ -193,23 +178,16 @@ float synthesize_gabor_noise_stretched(uint2 pixel_pos,
 	uint num_cells,
 	uint num_impulses,
 	uint rng_seed,
-	float2 velocity,
-	float stretch_per_unit_velocity,
-	float phase_offset)
+	float envelope_scale
+)
 {
 	float noise = 0.0;
 
 	uint cell_h = texture_size.y / num_cells;
 	uint cell_w = texture_size.x / num_cells;
 
-	int cell_y = int(pixel_pos.y) / int(cell_h);
-	int cell_x = int(pixel_pos.x) / int(cell_w);
-
-	float vel_mag = length(velocity);
-	float2 motion_dir_unit = safe_normalize(velocity);
-
-	// Unbounded stretch
-	float stretch = 1.0 + max(0.0, stretch_per_unit_velocity) * vel_mag;
+	int cell_y = int(pixel_pos.y / cell_h);
+	int cell_x = int(pixel_pos.x / cell_w);
 
 	for (int dy = -1; dy <= 1; dy++)
 	{
@@ -222,19 +200,24 @@ float synthesize_gabor_noise_stretched(uint2 pixel_pos,
 			{
 				continue;
 			}
+			uint y0 = uint(cy) * cell_h;
+			uint x0 = uint(cx) * cell_w;
 
-			uint cell_seed = rng_seed + cy * num_cells + cx;
-			uint rng_state = wang_hash(cell_seed);
-
-			uint y0 = cy * cell_h;
-			uint x0 = cx * cell_w;
 			uint y1 = min(texture_size.y, y0 + cell_h);
 			uint x1 = min(texture_size.x, x0 + cell_w);
 
+			if (x1 <= x0 || y1 <= y0)
+			{
+				continue;
+			}
+
+			uint cell_seed = rng_seed + uint(cy) * num_cells + uint(cx);
+			uint rng_state = wang_hash(cell_seed);
+
 			for (uint i = 0; i < num_impulses; i++)
 			{
-				uint impulse_y = random_int(rng_state, y0, y1);
-				uint impulse_x = random_int(rng_state, x0, x1);
+				uint impulse_y = (uint)random_int(rng_state, int(y0), int(y1));
+				uint impulse_x = (uint)random_int(rng_state, int(x0), int(x1));
 
 				float fl = F_L;
 				float fh = F_H;
@@ -249,83 +232,12 @@ float synthesize_gabor_noise_stretched(uint2 pixel_pos,
 				fcpp = clamp(fcpp, fl, fh);
 
 				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
-				float kernel_radius = 3.5 / max(fcpp, 1e-6);
 
-				if (length(offset) <= kernel_radius * stretch)
-				{
-					float kernel_val = gabor_kernel_stretched(offset, fcpp, theta, motion_dir_unit, stretch, phase_offset);
-					noise += amp * kernel_val;
-				}
-			}
-		}
-	}
-
-	return noise;
-}
-
-
-
-
-
-
-
-float synthesize_gabor_noise(uint2 pixel_pos,
-	uint2 texture_size,
-	float F_L,
-	float F_H,
-	float amp,
-	float theta,
-	uint num_cells,
-	uint num_impulses,
-	uint rng_seed)
-{
-	float noise = 0.0;
-
-	uint cell_h = texture_size.y / num_cells;
-	uint cell_w = texture_size.x / num_cells;
-
-	int cell_y = int(pixel_pos.y) / int(cell_h);
-	int cell_x = int(pixel_pos.x) / int(cell_w);
-
-	for (int dy = -1; dy <= 1; dy++)
-	{
-		for (int dx = -1; dx <= 1; dx++)
-		{
-			int cy = cell_y + dy;
-			int cx = cell_x + dx;
-
-			if (cy < 0 || cy >= int(num_cells) || cx < 0 || cx >= int(num_cells))
-			{
-				continue;
-			}
-
-			uint cell_seed = rng_seed + cy * num_cells + cx;
-			uint rng_state = wang_hash(cell_seed);
-
-			uint y0 = cy * cell_h;
-			uint x0 = cx * cell_w;
-			uint y1 = min(texture_size.y, y0 + cell_h);
-			uint x1 = min(texture_size.x, x0 + cell_w);
-
-			for (uint i = 0; i < num_impulses; i++)
-			{
-				uint impulse_y = random_int(rng_state, y0, y1);
-				uint impulse_x = random_int(rng_state, x0, x1);
-
-				float fl = F_L;
-				float fh = F_H;
-				float log_mean = log(sqrt(fl * fh));
-				float log_std = 0.25;
-				float random_normal = sqrt(-2.0 * log(random_float(rng_state))) * cos(2.0 * PI * random_float(rng_state));
-				float fcpp = exp(log_mean + log_std * random_normal);
-				fcpp = clamp(fcpp, fl, fh);
-
-				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
-				float kernel_radius = 3.5 / fcpp;
+				float kernel_radius = (3.5 / max(fcpp, 1e-6)) * max(envelope_scale, 1.0);
 
 				if (length(offset) <= kernel_radius)
 				{
-					float kernel_val = gabor_kernel(offset, fcpp, theta);
+					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale);
 					noise += amp * kernel_val;
 				}
 			}
@@ -341,7 +253,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	uint2 pixel_pos = DispatchThreadId.xy;
 	uint2 texture_size;
 	reprojected_noise_texture.GetDimensions(texture_size.x, texture_size.y);
-	
+
 	if (pixel_pos.x >= texture_size.x || pixel_pos.y >= texture_size.y)
 	{
 		return;
@@ -349,7 +261,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
 	float3 foveated = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
-	
+
 	float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0);
 	float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
 	float velocity_magnitude = length(velocity_decoded);
@@ -357,62 +269,40 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float noise_value = 0.0;
 	float motion_threshold = 0.001;
 
-	// HIGH MOTION: Regenerate noise
 	if (velocity_magnitude > motion_threshold)
 	{
 		float2 texel_size = 1.0 / float2(texture_size);
 		float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
 		float2 foveation_center_pixels = foveation_center * float2(texture_size);
-		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
 
-		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
-		float F_L = freq_bounds.x * 0.5f; // LOWER the frequencies for masking
-		float F_H = freq_bounds.y * 0.5f; // LOWER the frequencies for masking
+		// sigma_ecc is in UV space
+		float sigma_ecc = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
+		float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12); // sqrt(variance) of uniform distribution
+
+		float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
+
+		float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
+
+		float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
+		float F_L = freq_bounds.x; // could scale here for lower or higher freq's
+		float F_H = freq_bounds.y; // could scale here for lower or higher freq's
 
 		float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
-		float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
+		float l_a = choose_laplacian_level_from_sigma(sigma_eff, 0.25);
 		float amp = amplitude_from_laplacian(uv, input_foveated, linear_sampler, l_a, s_k);
 
-		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
+		float w = smoothstep_custom(sigma_eff, 0.5, 2.0);
 		amp *= w;
 
-		// This is going towards:
-		// phase = 2PI * frac(t * phase_cycles_per_sec) * (S * velocity_mag)
-		//float t01 = frac(time_seconds * phase_cycles_per_sec);
-		//float t01 = 0.5f + 0.5f * sin(2.0f * PI * time_seconds * phase_cycles_per_sec);
-		//float phase_offset = (t01 * 2.0f * PI) * (phase_strength * velocity_magnitude);
-
-		float phase = 2.0 * PI * time_seconds * phase_cycles_per_sec;
-		phase = frac(phase / (2.0 * PI)) * (2.0 * PI);
-		float phase_offset = phase * (phase_strength * velocity_magnitude);
-
-
-
-
-		// For non-stretched version
-		//noise_value = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
-
-		// For stretched version
-		float stretch_per_unit_velocity = 100.0f;
-		noise_value = synthesize_gabor_noise_stretched(
-			pixel_pos,
-			texture_size,
-			F_L,
-			F_H,
-			amp,
-			theta,
-			cells,
-			impulses_per_cell,
+		noise_value = synthesize_gabor_noise_sigma_scaled(
+			pixel_pos, texture_size,
+			F_L, F_H,
+			amp, theta,
+			cells, impulses_per_cell,
 			seed,
-			velocity_decoded,
-			stretch_per_unit_velocity,
-			phase_offset
+			envelope_scale
 		);
-
 	}
-
-
-	// LOW MOTION: Reuse previous noise
 	else
 	{
 		noise_value = previous_noise_texture.SampleLevel(point_sampler, uv, 0).r;
@@ -420,7 +310,6 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 	reprojected_noise_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
 
-	// Apply noise to luminance
 	float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
 	float Yn = saturate(Y + noise_value);
 	float scale = (Yn + EPSILON) / (Y + EPSILON);

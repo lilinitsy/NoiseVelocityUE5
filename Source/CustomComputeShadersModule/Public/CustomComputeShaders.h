@@ -173,9 +173,6 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingParameters, )
 	SHADER_PARAMETER(unsigned int, impulses_per_cell)
 	SHADER_PARAMETER(unsigned int, seed)
 
-	SHADER_PARAMETER(float, time_seconds)
-	SHADER_PARAMETER(float, phase_cycles_per_sec)
-	SHADER_PARAMETER(float, phase_strength)
 END_SHADER_PARAMETER_STRUCT()
 class FGaborNoiseEnhancementWithRerenderingCS : public FGlobalShader
 {
