@@ -162,23 +162,6 @@ float gabor_kernel_stretched(float2 offset, float  freq, float  theta, float2 mo
 }
 
 
-
-float gabor_kernel(float2 offset, float freq, float theta)
-{
-	float cos_theta = cos(theta);
-	float sin_theta = sin(theta);
-	float2 rotated = float2(
-		offset.x * cos_theta + offset.y * sin_theta,
-		-offset.x * sin_theta + offset.y * cos_theta
-	);
-
-	float sigma = 0.5 / freq;
-	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
-	float sinusoid = cos(2.0 * PI * freq * rotated.x);
-
-	return gaussian * sinusoid;
-}
-
 uint wang_hash(uint seed_val)
 {
 	seed_val = (seed_val ^ 61) ^ (seed_val >> 16);
@@ -395,8 +378,16 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 		// This is going towards:
 		// phase = 2PI * frac(t * phase_cycles_per_sec) * (S * velocity_mag)
-		float t01 = frac(time_seconds * phase_cycles_per_sec);
-		float phase_offset = (t01 * 2.0f * PI) * (phase_strength * velocity_magnitude);
+		//float t01 = frac(time_seconds * phase_cycles_per_sec);
+		//float t01 = 0.5f + 0.5f * sin(2.0f * PI * time_seconds * phase_cycles_per_sec);
+		//float phase_offset = (t01 * 2.0f * PI) * (phase_strength * velocity_magnitude);
+
+		float phase = 2.0 * PI * time_seconds * phase_cycles_per_sec;
+		phase = frac(phase / (2.0 * PI)) * (2.0 * PI);
+		float phase_offset = phase * (phase_strength * velocity_magnitude);
+
+
+
 
 		// For non-stretched version
 		//noise_value = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
