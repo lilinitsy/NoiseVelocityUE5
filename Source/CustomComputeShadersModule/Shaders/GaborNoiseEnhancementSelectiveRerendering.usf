@@ -18,6 +18,11 @@ uint cells;
 uint impulses_per_cell;
 uint seed;
 
+float time_seconds; // monotonic time
+float phase_cycles_per_sec; // how many times per second it goes 0 -> 2PI -> 0
+float phase_strength; // Probably needs to be tuned... oscillation strength, gets multipled by velocity.
+
+
 #define PI 3.14159265359
 #define EPSILON 1e-6
 #define INV_SQRT_12 0.2886751345948129
@@ -157,13 +162,23 @@ int random_int(inout uint state, int min_val, int max_val)
 	return min_val + int(random_float(state) * float(max_val - min_val));
 }
 
-float gabor_kernel_sigma_scaled(float2 offset, float freq, float theta, float envelope_scale)
+float gabor_kernel_sigma_scaled(
+	float2 offset,
+	float freq,
+	float theta,
+	float envelope_scale,
+	float phase_offset,
+	float m_rot_x
+)
 {
 	float2 rotated = rotate2d(offset, theta);
 
 	float sigma = (0.5 / max(freq, 1e-6)) * max(envelope_scale, 1e-6);
 	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
-	float sinusoid = cos(2.0 * PI * freq * rotated.x);
+
+	// Phase-shifted carrier (motion illusion)
+	float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot_x);
+	float sinusoid = cos(phase);
 
 	return gaussian * sinusoid;
 }
@@ -178,7 +193,9 @@ float synthesize_gabor_noise_sigma_scaled(
 	uint num_cells,
 	uint num_impulses,
 	uint rng_seed,
-	float envelope_scale
+	float envelope_scale,
+	float2 velocity,
+	float phase_offset
 )
 {
 	float noise = 0.0;
@@ -188,6 +205,10 @@ float synthesize_gabor_noise_sigma_scaled(
 
 	int cell_y = int(pixel_pos.y / cell_h);
 	int cell_x = int(pixel_pos.x / cell_w);
+
+	// Motion directions projected into the Gabor frame (rotated)
+	float m_rot_x = safe_normalize(rotate2d(velocity, theta)).x;
+
 
 	for (int dy = -1; dy <= 1; dy++)
 	{
@@ -237,7 +258,7 @@ float synthesize_gabor_noise_sigma_scaled(
 
 				if (length(offset) <= kernel_radius)
 				{
-					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale);
+					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, phase_offset, m_rot_x);
 					noise += amp * kernel_val;
 				}
 			}
@@ -294,14 +315,19 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float w = smoothstep_custom(sigma_eff, 0.5, 2.0);
 		amp *= w;
 
+		// Compute the phase offset with time
+		float base_phase = 2.0f * PI * frac(time_seconds * phase_cycles_per_sec);
+		float phase_offset = base_phase * phase_strength * velocity_magnitude; // scale by motion
+
 		noise_value = synthesize_gabor_noise_sigma_scaled(
 			pixel_pos, texture_size,
 			F_L, F_H,
 			amp, theta,
 			cells, impulses_per_cell,
 			seed,
-			envelope_scale
-		);
+			envelope_scale,
+			velocity_decoded,
+			phase_offset);
 	}
 	else
 	{
