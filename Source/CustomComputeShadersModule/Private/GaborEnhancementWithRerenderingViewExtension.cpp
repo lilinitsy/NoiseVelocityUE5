@@ -199,6 +199,9 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		graph_builder.QueueTextureExtraction(reprojected_noise, &cached_noise_texture, ERDGResourceExtractionFlags::None);
 
 		// Copy final output back to scene color
+		// ONLY copy it back to left side?
+
+
 		AddCopyTexturePass(graph_builder, combined_output, scene_colour);
 	
 		// Debug: Display the reprojected noise

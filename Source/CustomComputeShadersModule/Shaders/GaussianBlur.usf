@@ -1,5 +1,5 @@
 #include "/Engine/Public/Platform.ush"
-
+#include "utils.ush"
 
 Texture2D<float4> input_texture;
 SamplerState      Input_Sampler;
@@ -16,20 +16,6 @@ float blur_rate_arcmin_per_degree;
 uint use_radially_increasing_blur;
 
 
-float2 uv2deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
-{
-    float2 uv_diff = uv - fixation_uv;
-    float2 physical_diff = uv_diff * screen_dims_cm;
-    float2 angle_rad = atan(physical_diff / distance_cm);
-    return degrees(angle_rad);
-}
-
-
-float eccentricity(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
-{
-    float2 deg2 = uv2deg(uv, fixation_uv, distance_cm, screen_dims_cm);
-    return length(deg2);
-}
 
 float4 gaussian_blur(Texture2D<float4> tex, uint2 coord, uint2 frame_size, float sigma)
 {

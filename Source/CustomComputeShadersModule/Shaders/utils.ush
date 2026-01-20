@@ -1,0 +1,151 @@
+#include "/Engine/Private/Common.ush"
+
+#define PI 3.14159265359
+#define EPSILON 1e-6
+#define INV_SQRT_12 0.2886751345948129
+
+
+
+
+float2 uv2deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
+{
+	float2 uv_diff = uv - fixation_uv;
+	float2 physical_diff = uv_diff * screen_dims_cm;
+	float2 angle_rad = atan(physical_diff / distance_cm);
+	return degrees(angle_rad);
+}
+
+
+float eccentricity(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
+{
+	float2 deg2 = uv2deg(uv, fixation_uv, distance_cm, screen_dims_cm);
+	return length(deg2);
+}
+
+float2 safe_normalize(float2 v)
+{
+	float len2 = dot(v, v);
+	if (len2 < EPSILON)
+	{
+		return float2(1.0, 0.0);
+	}
+	return v * rsqrt(len2);
+}
+
+float2 rotate2d(float2 v, float theta)
+{
+	float c = cos(theta);
+	float s = sin(theta);
+	return float2(
+		v.x * c + v.y * s,
+		-v.x * s + v.y * c
+	);
+}
+
+
+
+float pixels_per_degree(float screen_width_px, float screen_width_cm, float distance_cm)
+{
+	float cm_per_pixel = screen_width_cm / screen_width_px;
+	float deg_rad = radians(1.0);
+	float size_cm = 2.0 * distance_cm * tan(deg_rad / 2.0);
+	float ppd = size_cm / cm_per_pixel;
+	return ppd;
+}
+
+float radial_sigma_map(float2 pixel_pos, float2 gaze_pos, float ppd, float blur_rate)
+{
+	float dist_px = length(pixel_pos - gaze_pos);
+	float dist_deg = dist_px / ppd;
+	float blur_arcmin = blur_rate * dist_deg;
+	float blur_deg = blur_arcmin / 60.0;
+	float sigma_px = (blur_deg * ppd) / 2.355;
+	return max(EPSILON, sigma_px);
+}
+
+float2 freq_bounds_cpp(float sigma_ecc, float fl_tbl_min, float fh_limit)
+{
+	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_ecc));
+	float F_L = 3.0 * sigma_f;
+	float F_H = fh_limit;
+	F_L = clamp(F_L, fl_tbl_min, F_H * 0.999);
+	return float2(F_L, F_H);
+}
+
+float choose_laplacian_level_from_sigma(float sigma_ecc, float a)
+{
+	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_ecc));
+	float f_c = sqrt(-log(a)) / (PI * max(EPSILON, sigma_ecc));
+	float l_a = -log2(max(EPSILON, f_c)) - 0.5;
+	return l_a;
+}
+
+float smoothstep_custom(float x, float edge0, float edge1)
+{
+	float t = saturate((x - edge0) / (edge1 - edge0));
+	return t * t * (3.0 - 2.0 * t);
+}
+
+float estimate_orientation(float2 uv, Texture2D tex, SamplerState samp, float2 texel_size)
+{
+	float tl = Luminance(tex.SampleLevel(samp, uv + float2(-1, -1) * texel_size, 0).rgb);
+	float tc = Luminance(tex.SampleLevel(samp, uv + float2(0, -1) * texel_size, 0).rgb);
+	float tr = Luminance(tex.SampleLevel(samp, uv + float2(1, -1) * texel_size, 0).rgb);
+	float ml = Luminance(tex.SampleLevel(samp, uv + float2(-1, 0) * texel_size, 0).rgb);
+	float mr = Luminance(tex.SampleLevel(samp, uv + float2(1, 0) * texel_size, 0).rgb);
+	float bl = Luminance(tex.SampleLevel(samp, uv + float2(-1, 1) * texel_size, 0).rgb);
+	float bc = Luminance(tex.SampleLevel(samp, uv + float2(0, 1) * texel_size, 0).rgb);
+	float br = Luminance(tex.SampleLevel(samp, uv + float2(1, 1) * texel_size, 0).rgb);
+
+	float gx = -tl + tr - 2.0 * ml + 2.0 * mr - bl + br;
+	float gy = -tl - 2.0 * tc - tr + bl + 2.0 * bc + br;
+
+	return atan2(gy, gx);
+}
+
+float sample_laplacian(float2 uv, Texture2D tex, SamplerState samp, float level)
+{
+	float3 current_mip = tex.SampleLevel(samp, uv, level).rgb;
+	float3 lowres_mip = tex.SampleLevel(samp, uv, level + 1.0).rgb;
+	float3 laplacian = current_mip - lowres_mip;
+	return length(laplacian);
+}
+
+float amplitude_from_laplacian(float2 uv, Texture2D tex, SamplerState samp, float l_a, float s_k_val)
+{
+	int l0 = clamp(int(floor(l_a)), 0, 3);
+	int l1 = clamp(l0 + 1, 0, 3);
+	float t = frac(l_a);
+
+	float A0 = sample_laplacian(uv, tex, samp, float(l0));
+	float A1 = sample_laplacian(uv, tex, samp, float(l1));
+
+	float amp = lerp(A0, A1, t);
+	return s_k_val * amp;
+}
+
+uint wang_hash(uint seed_val)
+{
+	seed_val = (seed_val ^ 61) ^ (seed_val >> 16);
+	seed_val *= 9;
+	seed_val = seed_val ^ (seed_val >> 4);
+	seed_val *= 0x27d4eb2d;
+	seed_val = seed_val ^ (seed_val >> 15);
+	return seed_val;
+}
+
+float random_float(inout uint state)
+{
+	state = wang_hash(state);
+	return float(state) / 4294967296.0;
+}
+
+int random_int(inout uint state, int min_val, int max_val)
+{
+	return min_val + int(random_float(state) * float(max_val - min_val));
+}
+
+float random_range(inout uint state, float min_val, float max_val)
+{
+	return min_val + random_float(state) * (max_val - min_val);
+}
