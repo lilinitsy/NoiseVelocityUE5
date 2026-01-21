@@ -18,6 +18,7 @@ float s_k;
 uint cells;
 uint impulses_per_cell;
 uint seed;
+uint region_mode;
 
 
 
@@ -139,38 +140,65 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		return;
 	}
 
-	float2 texel_size = 1.0 / float2(texture_size);
-	
-	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
-	
-	float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
-	float2 foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
-	float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-	float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
-	float F_L = freq_bounds.x;
-	float F_H = freq_bounds.y;
-	float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
-	
-	// Amplitude from Laplacian (a = 0.25)
-	float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
-	float amp = amplitude_from_laplacian(uv, input_foveated, LinearSampler, l_a, s_k);
-	
-	float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
-	amp *= w;
-	
-	float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
-		
-	// Apply noise to luminance
-	float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
-	float Yn = saturate(Y + noise);
-	
-	// Scale colour by luminance change
-	float scale = (Yn + EPSILON) / (Y + EPSILON);
-	float3 final_colour = saturate(foveated * scale);
-	
-	output_texture[pixel_pos] = float4(final_colour, 1.0);
+	float2 x_extents; // get it in pixel space, then convert to uv
+	if (region_mode == 0) // full scene
+	{
+		x_extents = float2(0, texture_size.x);
+	}
 
-	output_noise_texture[pixel_pos] = noise;
-	// Test to see if noise works:
-	//output_texture[pixel_pos] = float4(noise, noise, noise, 1.0f);
+	else if (region_mode == 1) // left
+	{
+		x_extents = float2(0, texture_size.x / 2);
+	}
+
+	else // 2 (or more if somehow above): right
+	{
+		x_extents = float2(texture_size.x / 2, texture_size.x);
+	}
+
+	// x_extents.x: min x; x_extents.y: max x; make sure not to divide by the y of texture_size
+	x_extents /= float2(texture_size.x, texture_size.x); // convert from pixel space to uv
+
+	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
+
+	if (uv.x >= x_extents.x && uv.x <= x_extents.y)
+	{
+		float2 texel_size = 1.0 / float2(texture_size);
+	
+		float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
+		float2 foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
+		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
+		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
+		float F_L = freq_bounds.x;
+		float F_H = freq_bounds.y;
+		float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
+	
+		// Amplitude from Laplacian (a = 0.25)
+		float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
+		float amp = amplitude_from_laplacian(uv, input_foveated, LinearSampler, l_a, s_k);
+	
+		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
+		amp *= w;
+	
+		float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
+		
+		// Apply noise to luminance
+		float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
+		float Yn = saturate(Y + noise);
+	
+		// Scale colour by luminance change
+		float scale = (Yn + EPSILON) / (Y + EPSILON);
+		float3 final_colour = saturate(foveated * scale);
+	
+		output_texture[pixel_pos] = float4(final_colour, 1.0);
+
+		output_noise_texture[pixel_pos] = noise;
+		// Test to see if noise works:
+		//output_texture[pixel_pos] = float4(noise, noise, noise, 1.0f);
+	}
+
+	else
+	{
+		output_texture[pixel_pos] = float4(foveated, 1.0);
+	}
 }

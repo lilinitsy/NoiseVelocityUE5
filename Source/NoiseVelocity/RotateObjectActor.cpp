@@ -18,28 +18,8 @@ void ARotateObjectActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//TArray<AActor*> found_actors;
-	//UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName(*tag_to_find), found_actors);
-
-	/*if (found_actors.Num() > 0)
-	{
-		rotating_object = found_actors[0];
-
-		// Ensure that the actor is movable
-		if (USceneComponent* root = rotating_object->GetRootComponent())
-		{
-			root->SetMobility(EComponentMobility::Movable);
-		}
-	}*/
-	// Ensure that the actor is movable
-	if(moving_object)
-	{
-		USceneComponent* root = moving_object->GetRootComponent();
-		if(root)
-		{
-			root->SetMobility(EComponentMobility::Movable);
-		}
-	}
+	set_actor_to_mobile(left_moving_object);
+	set_actor_to_mobile(right_moving_object);
 }
 
 // Called every frame
@@ -47,14 +27,22 @@ void ARotateObjectActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (moving_object)
+	if (left_moving_object)
 	{
 		FVector delta_translation = translation_meters_per_second * DeltaTime;
 		FRotator delta_rotation = rotation_deg_per_second * DeltaTime;
 		FTransform delta_transform = FTransform(delta_rotation, delta_translation, FVector(1.0f, 1.0f, 1.0f));
 
 		// rotate around z axis and translate in given direction
-		moving_object->AddActorLocalTransform(delta_transform);
+		if (left_moving_object)
+		{
+			left_moving_object->AddActorLocalTransform(delta_transform);
+		}
+
+		if (right_moving_object)
+		{
+			right_moving_object->AddActorLocalTransform(delta_transform);
+		}
 	}
 
 	else
@@ -71,3 +59,15 @@ void ARotateObjectActor::Tick(float DeltaTime)
 	}
 }
 
+
+void ARotateObjectActor::set_actor_to_mobile(AActor* actor)
+{
+	if (actor)
+	{
+		USceneComponent* root = actor->GetRootComponent();
+		if (root)
+		{
+			root->SetMobility(EComponentMobility::Movable);
+		}
+	}
+}

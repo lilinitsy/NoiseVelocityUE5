@@ -83,6 +83,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementParameters, )
 	SHADER_PARAMETER(unsigned int, cells)
 	SHADER_PARAMETER(unsigned int, impulses_per_cell)
 	SHADER_PARAMETER(unsigned int, seed)
+	SHADER_PARAMETER(unsigned int, region_mode)
 END_SHADER_PARAMETER_STRUCT()
 class FGaborNoiseEnhancementCS : public FGlobalShader
 {

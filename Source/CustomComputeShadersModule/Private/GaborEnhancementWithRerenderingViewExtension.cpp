@@ -122,6 +122,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->cells = cells;
 		noise_params->impulses_per_cell = impulses_per_cell;
 		noise_params->seed = static_seed;
+		noise_params->region_mode = region_mode;
 
 		const FIntVector gabor_group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),

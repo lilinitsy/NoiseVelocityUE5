@@ -32,11 +32,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float oscillation_time = 1.0f; // how long to let it move before it bounces back and forth
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
-	AActor* moving_object;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Moving Actors")
+	AActor* left_moving_object;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Moving Actors")
+	AActor* right_moving_object;
 
 
 	// hidden for modulating the oscillation time
 	float running_oscillation_timer = 0.0f;
+
+
+	void set_actor_to_mobile(AActor *actor);
 
 };
