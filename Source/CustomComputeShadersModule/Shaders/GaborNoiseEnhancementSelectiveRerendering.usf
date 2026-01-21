@@ -23,6 +23,8 @@ float time_seconds; // monotonic time
 float phase_cycles_per_sec; // how many times per second it goes 0 -> 2PI -> 0
 float phase_strength; // Probably needs to be tuned... oscillation strength, gets multipled by velocity.
 
+// Stuff for rendering only the left / only the right side of the screen
+uint region_mode; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
 
 float2 stretch_along_dir(float2 v, float2 dir_unit, float stretch)
 {
@@ -151,6 +153,25 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	uint2 texture_size;
 	reprojected_noise_texture.GetDimensions(texture_size.x, texture_size.y);
 
+	float2 x_extents; // get it in pixel space, then convert to uv
+	if (region_mode == 0) // full scene
+	{
+		x_extents = float2(0, texture_size.x);
+	}
+
+	else if (region_mode == 1) // left
+	{
+		x_extents = float2(0, texture_size.x / 2);
+	}
+
+	else // 2 (or more if somehow above): right
+	{
+		x_extents = float2(texture_size.x / 2, texture_size.x);
+	}
+
+	// x_extents.x: min x; x_extents.y: max x; make sure not to divide by the y of texture_size
+	x_extents /= float2(texture_size.x, texture_size.x); // convert from pixel space to uv
+
 	if (pixel_pos.x >= texture_size.x || pixel_pos.y >= texture_size.y)
 	{
 		return;
@@ -159,63 +180,72 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
 	float3 foveated = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
 
-	float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0);
-	float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
-	float velocity_magnitude = length(velocity_decoded);
-
-	float noise_value = 0.0;
-	float motion_threshold = 0.001;
-
-	if (velocity_magnitude > motion_threshold)
+	// Check that the bounds are proper to do noise
+	if (uv.x >= x_extents.x && uv.x <= x_extents.y)
 	{
-		float2 texel_size = 1.0 / float2(texture_size);
-		float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
-		float2 foveation_center_pixels = foveation_center * float2(texture_size);
+		float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0);
+		float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
+		float velocity_magnitude = length(velocity_decoded);
 
-		// sigma_ecc is in UV space
-		float sigma_ecc = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-		float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12); // sqrt(variance) of uniform distribution
+		float noise_value = 0.0;
+		float motion_threshold = 0.001;
 
-		float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
+		if (velocity_magnitude > motion_threshold)
+		{
+			float2 texel_size = 1.0 / float2(texture_size);
+			float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
+			float2 foveation_center_pixels = foveation_center * float2(texture_size);
 
-		float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
+			// sigma_ecc is in UV space
+			float sigma_ecc = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
+			float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12); // sqrt(variance) of uniform distribution
 
-		float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
-		float F_L = freq_bounds.x; // could scale here for lower or higher freq's
-		float F_H = freq_bounds.y; // could scale here for lower or higher freq's
+			float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
 
-		float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
-		float l_a = choose_laplacian_level_from_sigma(sigma_eff, 0.25);
-		float amp = amplitude_from_laplacian(uv, input_foveated, linear_sampler, l_a, s_k);
+			float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
 
-		float w = smoothstep_custom(sigma_eff, 0.5, 2.0);
-		amp *= w;
+			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
+			float F_L = freq_bounds.x; // could scale here for lower or higher freq's
+			float F_H = freq_bounds.y; // could scale here for lower or higher freq's
 
-		// Compute the phase offset with time
-		float base_phase = 2.0f * PI * frac(time_seconds * phase_cycles_per_sec);
-		float phase_offset = base_phase * phase_strength * velocity_magnitude; // scale by motion
+			float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
+			float l_a = choose_laplacian_level_from_sigma(sigma_eff, 0.25);
+			float amp = amplitude_from_laplacian(uv, input_foveated, linear_sampler, l_a, s_k);
 
-		noise_value = synthesize_gabor_noise_sigma_scaled(
-			pixel_pos, texture_size,
-			F_L, F_H,
-			amp, theta,
-			cells, impulses_per_cell,
-			seed,
-			envelope_scale,
-			velocity_decoded,
-			phase_offset);
+			float w = smoothstep_custom(sigma_eff, 0.5, 2.0);
+			amp *= w;
+
+			// Compute the phase offset with time
+			float base_phase = 2.0f * PI * frac(time_seconds * phase_cycles_per_sec);
+			float phase_offset = base_phase * phase_strength * velocity_magnitude; // scale by motion
+
+			noise_value = synthesize_gabor_noise_sigma_scaled(
+				pixel_pos, texture_size,
+				F_L, F_H,
+				amp, theta,
+				cells, impulses_per_cell,
+				seed,
+				envelope_scale,
+				velocity_decoded,
+				phase_offset);
+		}
+		else
+		{
+			noise_value = previous_noise_texture.SampleLevel(point_sampler, uv, 0).r;
+		}
+
+		reprojected_noise_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
+
+		float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
+		float Yn = saturate(Y + noise_value);
+		float scale = (Yn + EPSILON) / (Y + EPSILON);
+		float3 final_colour = saturate(foveated * scale);
+
+		output_texture[pixel_pos] = float4(final_colour, 1.0);
 	}
+
 	else
 	{
-		noise_value = previous_noise_texture.SampleLevel(point_sampler, uv, 0).r;
+		output_texture[pixel_pos] = float4(foveated, 1.0);
 	}
-
-	reprojected_noise_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
-
-	float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
-	float Yn = saturate(Y + noise_value);
-	float scale = (Yn + EPSILON) / (Y + EPSILON);
-	float3 final_colour = saturate(foveated * scale);
-
-	output_texture[pixel_pos] = float4(final_colour, 1.0);
 }

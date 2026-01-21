@@ -176,7 +176,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingParameters, )
 	SHADER_PARAMETER(float, time_seconds)
 	SHADER_PARAMETER(float, phase_cycles_per_sec)
 	SHADER_PARAMETER(float, phase_strength)
-
+	SHADER_PARAMETER(unsigned int, region_mode) // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
 
 END_SHADER_PARAMETER_STRUCT()
 class FGaborNoiseEnhancementWithRerenderingCS : public FGlobalShader

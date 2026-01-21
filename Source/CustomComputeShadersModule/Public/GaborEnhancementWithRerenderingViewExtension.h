@@ -20,7 +20,8 @@ public:
 		unsigned int impulses_per_cell,
 		unsigned int seed,
 		float phase_cycles_per_sec,
-		float phase_strength);
+		float phase_strength,
+		unsigned int region_mode);
 
 	virtual void SetupViewFamily(FSceneViewFamily& in_view_family) override {}
 	virtual void SetupView(FSceneViewFamily& in_view_family, FSceneView& in_view) override {}
@@ -48,5 +49,6 @@ public:
 	unsigned int dynamic_seed;
 	float phase_cycles_per_sec = 2.0f;
 	float phase_strength = 1.0f;
+	unsigned int region_mode = 0; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
 
 };

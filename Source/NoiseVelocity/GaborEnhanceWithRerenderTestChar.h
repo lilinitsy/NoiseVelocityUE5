@@ -52,4 +52,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float phase_strength = 1.0f;
 
+	// 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int region_mode = 0;
+
+
 };

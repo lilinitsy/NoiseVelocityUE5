@@ -20,7 +20,8 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	unsigned int impulses_per_cell,
 	unsigned int seed,
 	float phase_cycles_per_sec,
-	float phase_strength
+	float phase_strength,
+	unsigned int region_mode
 ) :
 	FSceneViewExtensionBase(auto_register),
 	render_every_n_frames(render_every_n_frames),
@@ -38,7 +39,8 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	static_seed(seed),
 	dynamic_seed(seed),
 	phase_cycles_per_sec(phase_cycles_per_sec),
-	phase_strength(phase_strength)
+	phase_strength(phase_strength),
+	region_mode(region_mode)
 {
 }
 
@@ -179,7 +181,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->time_seconds = (float)view.Family->Time.GetWorldTimeSeconds();
 		noise_params->phase_cycles_per_sec = phase_cycles_per_sec;
 		noise_params->phase_strength = phase_strength;
-
+		noise_params->region_mode = region_mode;
 
 		const FIntVector noise_group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),
