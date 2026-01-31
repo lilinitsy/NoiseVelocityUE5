@@ -53,8 +53,19 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	float delta_rotation = rotation_speed * DeltaTime;
-	AddActorLocalRotation(FRotator(0.0f, delta_rotation, 0.0f));
+
+	if (take_screenshot)
+	{
+#if WITH_EDITOR
+		const FString ImageDirectory = FString::Printf(TEXT("%s/%s"), *FPaths::ProjectDir(), TEXT("Screenshots"));
+#else
+		const FString ImageDirectory = FString::Printf(TEXT("%s/../%s"), *FPaths::ProjectDir(), TEXT("Screenshots"));
+#endif
+		const FString ImageFilename = FString::Printf(TEXT("%s/Screenshot_%d%02d%02d_%02d%02d%02d_%03d.png"), *ImageDirectory, FDateTime::Now().GetYear(), FDateTime::Now().GetMonth(), FDateTime::Now().GetDay(), FDateTime::Now().GetHour(), FDateTime::Now().GetMinute(), FDateTime::Now().GetSecond(), FDateTime::Now().GetMillisecond());
+		FScreenshotRequest::RequestScreenshot(ImageFilename, false, false);
+
+		UE_LOG(LogTemp, Log, TEXT("Screenshot taken"));
+	}
 }
 
 // Called to bind functionality to input
@@ -62,5 +73,13 @@ void AGaborEnhanceWithRerenderTestChar::SetupPlayerInputComponent(UInputComponen
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	PlayerInputComponent->BindAction("toggle_screenshot", IE_Pressed, this, &AGaborEnhanceWithRerenderTestChar::toggle_screenshot);
+
 }
 
+
+void AGaborEnhanceWithRerenderTestChar::toggle_screenshot()
+{
+	UE_LOG(LogTemp, Log, TEXT("Screenshot taken"));
+	take_screenshot = !take_screenshot;
+}

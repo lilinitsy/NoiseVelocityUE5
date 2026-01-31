@@ -42,10 +42,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int render_every_n_frames = 1;
 
-	// Keep to 0 if no rotation
-	UPROPERTY(EditAnywhere, Category = "Settings")
-	float rotation_speed = 0.0f;
-
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float phase_cycles_per_sec = 2.0f;
 	
@@ -56,5 +52,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int region_mode = 0;
 
+	// Whether to take screenshots after motion has started, with spacebar used to start and stop the screenshot process
+	bool take_screenshot = false;
+
+
+	void toggle_screenshot();
 
 };

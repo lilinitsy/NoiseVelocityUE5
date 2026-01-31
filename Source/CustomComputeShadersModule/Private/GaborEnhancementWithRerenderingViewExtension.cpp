@@ -180,6 +180,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->impulses_per_cell = impulses_per_cell;
 		noise_params->seed = static_seed;
 		noise_params->time_seconds = (float)view.Family->Time.GetWorldTimeSeconds();
+		//noise_params->time_seconds = total_time_dbg; // to force 60fps
 		noise_params->phase_cycles_per_sec = phase_cycles_per_sec;
 		noise_params->phase_strength = phase_strength;
 		noise_params->region_mode = region_mode;
@@ -212,4 +213,5 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 	}
 
+	total_time_dbg += 0.0167f;
 }

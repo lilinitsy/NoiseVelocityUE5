@@ -27,21 +27,27 @@ void ARotateObjectActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (left_moving_object)
+	//DeltaTime = 0.0167f;
+
+	if (left_moving_object && right_moving_object)
 	{
-		FVector delta_translation = translation_meters_per_second * DeltaTime;
-		FRotator delta_rotation = rotation_deg_per_second * DeltaTime;
-		FTransform delta_transform = FTransform(delta_rotation, delta_translation, FVector(1.0f, 1.0f, 1.0f));
+		FVector left_delta_translation = left_translation_meters_per_second * DeltaTime;
+		FRotator left_delta_rotation = left_rotation_deg_per_second * DeltaTime;
+		FTransform left_delta_transform = FTransform(left_delta_rotation, left_delta_translation, FVector(1.0f, 1.0f, 1.0f));
 
 		// rotate around z axis and translate in given direction
 		if (left_moving_object)
 		{
-			left_moving_object->AddActorLocalTransform(delta_transform);
+			left_moving_object->AddActorLocalTransform(left_delta_transform);
 		}
 
-		if (right_moving_object)
+		FVector right_delta_translation = right_translation_meters_per_second * DeltaTime;
+		FRotator right_delta_rotation = right_rotation_deg_per_second * DeltaTime;
+		FTransform right_delta_transform = FTransform(right_delta_rotation, right_delta_translation, FVector(1.0f, 1.0f, 1.0f));
+
+		if (right_moving_object && total_time > right_delay_time)
 		{
-			right_moving_object->AddActorLocalTransform(delta_transform);
+			right_moving_object->AddActorLocalTransform(right_delta_transform);
 		}
 	}
 
@@ -51,13 +57,28 @@ void ARotateObjectActor::Tick(float DeltaTime)
 
 	}
 
-	running_oscillation_timer += DeltaTime;
-	if (running_oscillation_timer >= oscillation_time)
+	left_running_oscillation_timer += DeltaTime;
+	if (left_running_oscillation_timer >= oscillation_time)
 	{
-		running_oscillation_timer = 0.0f;
-		translation_meters_per_second *= -1.0f;
+		left_running_oscillation_timer = 0.0f;
+		left_translation_meters_per_second *= -1.0f;
 	}
+
+	if(total_time >= right_delay_time)
+	{
+		right_running_oscillation_timer += DeltaTime;
+	}
+
+	if (right_running_oscillation_timer >= oscillation_time)
+	{
+		right_running_oscillation_timer = 0.0f;
+		right_translation_meters_per_second *= -1.0f;
+	}
+
+
+	total_time += DeltaTime; // for the timer delay on start
 }
+
 
 
 void ARotateObjectActor::set_actor_to_mobile(AActor* actor)

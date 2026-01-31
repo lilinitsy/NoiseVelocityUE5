@@ -153,6 +153,22 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	uint2 texture_size;
 	reprojected_noise_texture.GetDimensions(texture_size.x, texture_size.y);
 
+	if (pixel_pos.x >= texture_size.x || pixel_pos.y >= texture_size.y)
+	{
+		return;
+	}
+
+	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
+
+	// Avoid speckling around fovea
+	/*if (length(foveation_center - uv) <= 0.205f)
+	{
+		 //output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
+		return;
+	}*/
+
+
+
 	float2 x_extents; // get it in pixel space, then convert to uv
 	if (region_mode == 0) // full scene
 	{
@@ -172,12 +188,8 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	// x_extents.x: min x; x_extents.y: max x; make sure not to divide by the y of texture_size
 	x_extents /= float2(texture_size.x, texture_size.x); // convert from pixel space to uv
 
-	if (pixel_pos.x >= texture_size.x || pixel_pos.y >= texture_size.y)
-	{
-		return;
-	}
 
-	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
+
 	float3 foveated = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
 
 	// Check that the bounds are proper to do noise

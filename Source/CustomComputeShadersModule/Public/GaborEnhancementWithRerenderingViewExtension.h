@@ -51,4 +51,9 @@ public:
 	float phase_strength = 1.0f;
 	unsigned int region_mode = 0; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
 
+
+	// ONLY for forcing fixed time for screenshots
+	// Manually add to it at the end of PrePostProcessPass_RenderThread with whatever
+	// timestep is desired
+	float total_time_dbg = 0.0f; 
 };
