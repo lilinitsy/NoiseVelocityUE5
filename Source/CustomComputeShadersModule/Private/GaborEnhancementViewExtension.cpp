@@ -94,6 +94,8 @@ void FGaborEnhancementViewExtension::PrePostProcessPass_RenderThread(
 	noise_params->cells = cells;
 	noise_params->impulses_per_cell = impulses_per_cell;
 	noise_params->seed = seed;
+	noise_params->frequency_scale = 1.0f; // TODO: Update this programmatically
+	noise_params->region_mode = 0;
 
 	const FIntVector gabor_group_count(
 		FMath::DivideAndRoundUp(desc.Extent.X, 16),

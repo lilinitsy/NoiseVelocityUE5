@@ -106,6 +106,7 @@ void FGaborEnhancementWithReprojectionViewExtension::PrePostProcessPass_RenderTh
 		noise_params->s_k = s_k;
 		noise_params->cells = cells;
 		noise_params->impulses_per_cell = impulses_per_cell;
+		noise_params->frequency_scale = 1.0f; // TODO: Update this via input parameters
 		noise_params->seed = seed;
 
 		const FIntVector gabor_group_count(

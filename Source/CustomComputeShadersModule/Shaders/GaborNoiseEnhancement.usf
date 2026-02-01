@@ -18,6 +18,9 @@ float s_k;
 uint cells;
 uint impulses_per_cell;
 uint seed;
+
+float frequency_scale;
+
 uint region_mode;
 
 
@@ -169,8 +172,8 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float2 foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
 		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
 		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
-		float F_L = freq_bounds.x;
-		float F_H = freq_bounds.y;
+		float F_L = freq_bounds.x * frequency_scale;
+		float F_H = freq_bounds.y * frequency_scale;
 		float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
 	
 		// Amplitude from Laplacian (a = 0.25)

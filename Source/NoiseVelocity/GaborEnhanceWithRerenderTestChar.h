@@ -42,6 +42,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int render_every_n_frames = 1;
 
+	// Shader input to scale Gabor frequency higher or lower
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float frequency_scale = 1;
+
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float phase_cycles_per_sec = 2.0f;
 	

@@ -19,6 +19,7 @@ uint cells;
 uint impulses_per_cell;
 uint seed;
 
+float frequency_scale;
 float time_seconds; // monotonic time
 float phase_cycles_per_sec; // how many times per second it goes 0 -> 2PI -> 0
 float phase_strength; // Probably needs to be tuned... oscillation strength, gets multipled by velocity.
@@ -217,8 +218,8 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
 
 			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
-			float F_L = freq_bounds.x; // could scale here for lower or higher freq's
-			float F_H = freq_bounds.y; // could scale here for lower or higher freq's
+			float F_L = freq_bounds.x * frequency_scale; // could scale here for lower or higher freq's
+			float F_H = freq_bounds.y * frequency_scale; // could scale here for lower or higher freq's
 
 			float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
 			float l_a = choose_laplacian_level_from_sigma(sigma_eff, 0.25);

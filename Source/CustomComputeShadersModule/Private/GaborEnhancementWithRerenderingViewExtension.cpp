@@ -19,6 +19,7 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	unsigned int cells,
 	unsigned int impulses_per_cell,
 	unsigned int seed,
+	float frequency_scale,
 	float phase_cycles_per_sec,
 	float phase_strength,
 	unsigned int region_mode
@@ -38,6 +39,7 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	impulses_per_cell(impulses_per_cell),
 	static_seed(seed),
 	dynamic_seed(seed),
+	frequency_scale(frequency_scale),
 	phase_cycles_per_sec(phase_cycles_per_sec),
 	phase_strength(phase_strength),
 	region_mode(region_mode)
@@ -122,6 +124,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->cells = cells;
 		noise_params->impulses_per_cell = impulses_per_cell;
 		noise_params->seed = static_seed;
+		noise_params->frequency_scale = frequency_scale;
 		noise_params->region_mode = region_mode;
 
 		const FIntVector gabor_group_count(
@@ -184,6 +187,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->phase_cycles_per_sec = phase_cycles_per_sec;
 		noise_params->phase_strength = phase_strength;
 		noise_params->region_mode = region_mode;
+		noise_params->frequency_scale = frequency_scale;
 
 		const FIntVector noise_group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),

@@ -19,6 +19,7 @@ public:
 		unsigned int cells,
 		unsigned int impulses_per_cell,
 		unsigned int seed,
+		float frequency_scale,
 		float phase_cycles_per_sec,
 		float phase_strength,
 		unsigned int region_mode);
@@ -47,6 +48,8 @@ public:
 	unsigned int impulses_per_cell;
 	unsigned int static_seed; // For generating noise to be deterministic (but not the rerendered)
 	unsigned int dynamic_seed;
+
+	float frequency_scale;
 	float phase_cycles_per_sec = 2.0f;
 	float phase_strength = 1.0f;
 	unsigned int region_mode = 0; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
