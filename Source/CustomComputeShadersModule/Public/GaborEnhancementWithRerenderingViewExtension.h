@@ -52,7 +52,7 @@ public:
 	float frequency_scale;
 	float phase_cycles_per_sec = 2.0f;
 	float phase_strength = 1.0f;
-	unsigned int region_mode = 0; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
+	unsigned int region_mode = 0; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT, 3 = NO NOISE
 
 
 	// ONLY for forcing fixed time for screenshots

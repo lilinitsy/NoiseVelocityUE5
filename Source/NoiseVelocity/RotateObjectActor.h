@@ -50,7 +50,18 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Moving Actors")
 	AActor* right_moving_object;
+		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	bool render_same_fps = true; 
 
+	// If render_same_fps is true, this is discarded.
+	// if !render_same_fps, only gaussian blur should be used.
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int render_every_n_frames = 0;
+
+	// for tracking whether to move
+	unsigned int left_framecount = 0;
+	FVector left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
 
 	// hidden for modulating the oscillation time
 	float left_running_oscillation_timer = 0.0f;

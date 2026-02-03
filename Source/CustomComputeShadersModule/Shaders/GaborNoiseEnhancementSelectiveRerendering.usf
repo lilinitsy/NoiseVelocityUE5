@@ -52,10 +52,12 @@ float gabor_kernel_sigma_scaled(
 {
 	float2 rotated = rotate2d(offset, theta);
 
+	// Modifying the frequency is messing up the colours
+
 	float sigma = (0.5 / max(freq, 1e-6)) * max(envelope_scale, 1e-6);
 	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
 
-	// Phase-shifted carrier (motion illusion)
+	// Phase shift (motion illusion)
 	float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot_x);
 	float sinusoid = cos(phase);
 

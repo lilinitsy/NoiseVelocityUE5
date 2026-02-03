@@ -34,11 +34,28 @@ void ARotateObjectActor::Tick(float DeltaTime)
 		FVector left_delta_translation = left_translation_meters_per_second * DeltaTime;
 		FRotator left_delta_rotation = left_rotation_deg_per_second * DeltaTime;
 		FTransform left_delta_transform = FTransform(left_delta_rotation, left_delta_translation, FVector(1.0f, 1.0f, 1.0f));
+		left_delta_movement += left_delta_translation;
 
 		// rotate around z axis and translate in given direction
 		if (left_moving_object)
 		{
-			left_moving_object->AddActorLocalTransform(left_delta_transform);
+			// Check if we should simulate low fps for the purpose of testing blurred vs blurred
+			if(render_same_fps)
+			{
+				left_moving_object->AddActorLocalTransform(left_delta_transform);
+			}
+
+			else
+			{
+				if (left_framecount % render_every_n_frames == 0)
+				{
+					left_delta_transform = FTransform(left_delta_rotation, left_delta_movement, FVector(1.0f, 1.0f, 1.0f));
+
+					left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
+					left_moving_object->AddActorLocalTransform(left_delta_transform);
+
+				}
+			}
 		}
 
 		FVector right_delta_translation = right_translation_meters_per_second * DeltaTime;
@@ -49,6 +66,8 @@ void ARotateObjectActor::Tick(float DeltaTime)
 		{
 			right_moving_object->AddActorLocalTransform(right_delta_transform);
 		}
+
+		left_framecount++;
 	}
 
 	else

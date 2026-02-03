@@ -35,6 +35,8 @@ float gabor_kernel(float2 offset, float freq, float theta)
 		-offset.x * sin_theta + offset.y * cos_theta
 	);
 	
+	// Modifying the frequency is messing up the colours
+
 	// Gabor function
 	float sigma = 0.5 / freq;
 	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
