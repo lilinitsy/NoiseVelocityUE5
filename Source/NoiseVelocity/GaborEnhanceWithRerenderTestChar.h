@@ -56,6 +56,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int region_mode = 0;
 
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int comparison_mode = 0;
 	// Whether to take screenshots after motion has started, with spacebar used to start and stop the screenshot process
 	bool take_screenshot = false;
 

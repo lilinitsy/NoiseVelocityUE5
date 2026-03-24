@@ -2,6 +2,7 @@
 #include "utils.ush"
 
 Texture2D input_foveated;
+Texture2D most_recently_rendered_image; // Used for comparing basefps vs lowerfps
 Texture2D previous_noise_texture;
 Texture2D motion_vector_texture;
 SamplerState point_sampler;
@@ -26,6 +27,12 @@ float phase_strength; // Probably needs to be tuned... oscillation strength, get
 
 // Stuff for rendering only the left / only the right side of the screen
 uint region_mode; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
+
+// 0 = COMPARE_SAME_FPS, 1 = COMPARE_DIFFERENT_FPS 
+// (this version would render one side of the screen at basefps, writing out
+// the appropriate half of Texture2D most_recently_rendered_image)
+uint comparison_mode; 
+
 
 float2 stretch_along_dir(float2 v, float2 dir_unit, float stretch)
 {
@@ -193,7 +200,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 
 
-	float3 foveated = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
+	float3 foveated_cached = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
 
 	// Check that the bounds are proper to do noise
 	if (uv.x >= x_extents.x && uv.x <= x_extents.y)
@@ -251,16 +258,24 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 		reprojected_noise_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
 
-		float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
+		float Y = 0.2126 * foveated_cached.r + 0.7152 * foveated_cached.g + 0.0722 * foveated_cached.b;
 		float Yn = saturate(Y + noise_value);
 		float scale = (Yn + EPSILON) / (Y + EPSILON);
-		float3 final_colour = saturate(foveated * scale);
+		float3 final_colour = saturate(foveated_cached * scale);
 
 		output_texture[pixel_pos] = float4(final_colour, 1.0);
 	}
 
-	else
+	// If we're comparing same fps, use the cached image
+	else if(comparison_mode == 0)
 	{
-		output_texture[pixel_pos] = float4(foveated, 1.0);
+		output_texture[pixel_pos] = float4(foveated_cached, 1.0);
+	}
+
+	// If not comparing same fps, use the most recently truly rendered image (yes, this is only possible with postprocessing)
+	else if (comparison_mode == 1)
+	{
+		float3 foveated_most_recent = most_recently_rendered_image.SampleLevel(point_sampler, uv, 0).rgb;
+		output_texture[pixel_pos] = float4(foveated_most_recent, 1.0);
 	}
 }

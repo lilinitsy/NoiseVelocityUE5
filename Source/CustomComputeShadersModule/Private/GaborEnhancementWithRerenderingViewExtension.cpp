@@ -22,7 +22,8 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	float frequency_scale,
 	float phase_cycles_per_sec,
 	float phase_strength,
-	unsigned int region_mode
+	unsigned int region_mode,
+	unsigned int comparison_mode
 ) :
 	FSceneViewExtensionBase(auto_register),
 	render_every_n_frames(render_every_n_frames),
@@ -42,7 +43,8 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 	frequency_scale(frequency_scale),
 	phase_cycles_per_sec(phase_cycles_per_sec),
 	phase_strength(phase_strength),
-	region_mode(region_mode)
+	region_mode(region_mode),
+	comparison_mode(comparison_mode)
 {
 }
 
@@ -61,6 +63,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 	FRDGTextureDesc desc = scene_colour->Desc;
 	desc.Flags |= TexCreate_UAV;
 	desc.NumMips = 5;
+
 
 	if (should_render_full_frame)
 	{
@@ -151,8 +154,60 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 	else if (cached_base_image && cached_noise_texture)
 	{
+		FGaborNoiseEnhancementWithRerenderingCS::FParameters* noise_params = graph_builder.AllocParameters<FGaborNoiseEnhancementWithRerenderingCS::FParameters>();
+		noise_params->most_recently_rendered_image = nullptr;
+		// This only happens if NOT comparing the same FPS side by side, noise vs blur
+		// In this case, we need to rerender the gaussian blur every frame, but not update
+		// the cached base image (which gets rendered into whichever side has noise)
+		// and use the new one to update to the other side.
+		if (comparison_mode == 1)
+		{
+			FRDGTextureRef blur_output = graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
+
+			TShaderMapRef<FGaussianBlurCS> blur_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			FGaussianBlurCS::FParameters* blur_params = graph_builder.AllocParameters<FGaussianBlurCS::FParameters>();
+
+			blur_params->input_texture = scene_colour;
+			blur_params->Input_Sampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+			blur_params->output_texture = graph_builder.CreateUAV(blur_output);
+			blur_params->foveation_center = foveation_center;
+			blur_params->radius_fovea = radius_fovea;
+			blur_params->radius_periphery = radius_periphery;
+			blur_params->screen_width_cm = screen_width_cm;
+			blur_params->screen_height_cm = screen_height_cm;
+			blur_params->distance_from_screen = distance_from_screen_cm;
+			blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
+			blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
+
+			const FIntVector blur_group_count(
+				FMath::DivideAndRoundUp(desc.Extent.X, 16),
+				FMath::DivideAndRoundUp(desc.Extent.Y, 16),
+				1);
+
+			graph_builder.AddPass(
+				RDG_EVENT_NAME("GaussianBlurCS"),
+				blur_params,
+				ERDGPassFlags::Compute,
+				[blur_cs, blur_params, blur_group_count](FRHICommandList& rhi_cmd_list)
+				{
+					FComputeShaderUtils::Dispatch(rhi_cmd_list, blur_cs, *blur_params, blur_group_count);
+				});
+
+			// Generate mips for Laplacian pyramid
+			FGenerateMipsParams generate_mips_params = {};
+			FGenerateMips::Execute(graph_builder, GMaxRHIFeatureLevel, blur_output, generate_mips_params);
+
+			noise_params->most_recently_rendered_image = blur_output;
+		}
+
 		FRDGTextureRef cached_base = graph_builder.RegisterExternalTexture(cached_base_image, TEXT("cached_base_image"));
 		FRDGTextureRef previous_noise = graph_builder.RegisterExternalTexture(cached_noise_texture, TEXT("previous_noise"));
+
+		// Query the mode
+		// This gets to some spaghetti bullshit: 
+		// If we're trying to compare the SAME FPS (asking "which is higher fps?" or along those lines
+		// set compare_same_fps = false (default)
+		// Otherwise, we need the shader to overwrite one side of the screen with the newly rendered image.
 
 		// Regenerate mips for cached base since extraction loses them
 		FGenerateMipsParams generate_mips_params = {};
@@ -162,8 +217,6 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		FRDGTextureRef reprojected_noise = graph_builder.CreateTexture(desc, TEXT("selective_rerender_noise"));
 
 		TShaderMapRef<FGaborNoiseEnhancementWithRerenderingCS> noise_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-		FGaborNoiseEnhancementWithRerenderingCS::FParameters* noise_params =
-			graph_builder.AllocParameters<FGaborNoiseEnhancementWithRerenderingCS::FParameters>();
 
 		noise_params->input_foveated = cached_base;
 		noise_params->previous_noise_texture = previous_noise;
@@ -187,6 +240,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		noise_params->phase_cycles_per_sec = phase_cycles_per_sec;
 		noise_params->phase_strength = phase_strength;
 		noise_params->region_mode = region_mode;
+		noise_params->comparison_mode = comparison_mode;
 		noise_params->frequency_scale = frequency_scale;
 
 		const FIntVector noise_group_count(

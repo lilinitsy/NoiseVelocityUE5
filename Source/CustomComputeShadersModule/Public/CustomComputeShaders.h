@@ -150,6 +150,7 @@ class FNoiseReprojectionCS : public FGlobalShader
 // THESE USE GABOR ENHANCEMENT, BUT RERENDER NOISE EVERY FRAME, EVEN IF SHADING IS NOT UPDATED
 BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingParameters, )
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, input_foveated)
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, most_recently_rendered_image) // Used for comparing basefps vs lowerfps 
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, previous_noise_texture)
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, motion_vector_texture)
 
@@ -180,6 +181,12 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingParameters, )
 	SHADER_PARAMETER(float, phase_cycles_per_sec)
 	SHADER_PARAMETER(float, phase_strength)
 	SHADER_PARAMETER(unsigned int, region_mode) // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
+
+	// 0 = COMPARE_SAME_FPS, 1 = COMPARE_DIFFERENT_FPS 
+	// (this version would render one side of the screen at basefps, writing out
+	// the appropriate half of Texture2D most_recently_rendered_image)
+	SHADER_PARAMETER(unsigned int, comparison_mode)
+
 
 END_SHADER_PARAMETER_STRUCT()
 class FGaborNoiseEnhancementWithRerenderingCS : public FGlobalShader

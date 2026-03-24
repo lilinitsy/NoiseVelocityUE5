@@ -22,7 +22,8 @@ public:
 		float frequency_scale,
 		float phase_cycles_per_sec,
 		float phase_strength,
-		unsigned int region_mode);
+		unsigned int region_mode,
+		unsigned int comparison_mode);
 
 	virtual void SetupViewFamily(FSceneViewFamily& in_view_family) override {}
 	virtual void SetupView(FSceneViewFamily& in_view_family, FSceneView& in_view) override {}
@@ -53,7 +54,7 @@ public:
 	float phase_cycles_per_sec = 2.0f;
 	float phase_strength = 1.0f;
 	unsigned int region_mode = 0; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT, 3 = NO NOISE
-
+	unsigned int comparison_mode;
 
 	// ONLY for forcing fixed time for screenshots
 	// Manually add to it at the end of PrePostProcessPass_RenderThread with whatever

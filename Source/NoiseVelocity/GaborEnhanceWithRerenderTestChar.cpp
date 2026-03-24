@@ -45,7 +45,8 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 		frequency_scale,
 		phase_cycles_per_sec,
 		phase_strength,
-		region_mode);
+		region_mode,
+		comparison_mode);
 
 
 }
