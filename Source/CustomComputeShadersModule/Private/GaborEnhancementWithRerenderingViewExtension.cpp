@@ -67,6 +67,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 	if (should_render_full_frame)
 	{
+		//UE_LOG(LogTemp, Log, TEXT("Should render full frame"));
 		// Step 1: Gaussian blur
 		FRDGTextureRef blur_output = graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
 
@@ -154,8 +155,14 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 	else if (cached_base_image && cached_noise_texture)
 	{
+		//UE_LOG(LogTemp, Log, TEXT("Noise frames"));
 		FGaborNoiseEnhancementWithRerenderingCS::FParameters* noise_params = graph_builder.AllocParameters<FGaborNoiseEnhancementWithRerenderingCS::FParameters>();
-		noise_params->most_recently_rendered_image = nullptr;
+		
+		// Default assign it to the cached blur image to avoid a shader compilation issue.
+		// Can't just assign to nullptr, shader crashes.
+		FRDGTextureRef cached_base = graph_builder.RegisterExternalTexture(cached_base_image, TEXT("cached_base_image"));
+		FRDGTextureRef previous_noise = graph_builder.RegisterExternalTexture(cached_noise_texture, TEXT("previous_noise"));
+		noise_params->most_recently_rendered_image = cached_base;
 		// This only happens if NOT comparing the same FPS side by side, noise vs blur
 		// In this case, we need to rerender the gaussian blur every frame, but not update
 		// the cached base image (which gets rendered into whichever side has noise)
@@ -200,8 +207,6 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 			noise_params->most_recently_rendered_image = blur_output;
 		}
 
-		FRDGTextureRef cached_base = graph_builder.RegisterExternalTexture(cached_base_image, TEXT("cached_base_image"));
-		FRDGTextureRef previous_noise = graph_builder.RegisterExternalTexture(cached_noise_texture, TEXT("previous_noise"));
 
 		// Query the mode
 		// This gets to some spaghetti bullshit: 

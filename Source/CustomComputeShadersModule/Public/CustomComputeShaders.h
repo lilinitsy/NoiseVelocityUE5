@@ -186,8 +186,6 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingParameters, )
 	// (this version would render one side of the screen at basefps, writing out
 	// the appropriate half of Texture2D most_recently_rendered_image)
 	SHADER_PARAMETER(unsigned int, comparison_mode)
-
-
 END_SHADER_PARAMETER_STRUCT()
 class FGaborNoiseEnhancementWithRerenderingCS : public FGlobalShader
 {
@@ -195,4 +193,40 @@ public:
 	DECLARE_EXPORTED_SHADER_TYPE(FGaborNoiseEnhancementWithRerenderingCS, Global, );
 	using FParameters = FGaborNoiseEnhancementWithRerenderingParameters;
 	SHADER_USE_PARAMETER_STRUCT(FGaborNoiseEnhancementWithRerenderingCS, FGlobalShader);
+};
+
+
+
+// For Blue Noise
+BEGIN_SHADER_PARAMETER_STRUCT(FGaborBlueNoiseTextureTilingParameters, )
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, input_foveated)
+	SHADER_PARAMETER_SAMPLER(SamplerState, LinearSampler)
+
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, motion_vector_texture)
+	SHADER_PARAMETER_SAMPLER(SamplerState, motion_vector_sampler)
+
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_texture)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_noise_texture)
+
+	SHADER_PARAMETER(FVector2f, foveation_center)
+	SHADER_PARAMETER(float, screen_width_cm)
+	SHADER_PARAMETER(float, screen_height_cm)
+	SHADER_PARAMETER(float, distance_from_screen_cm)
+
+	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
+	SHADER_PARAMETER(unsigned int, use_radially_increasing_blur)
+	SHADER_PARAMETER(float, s_k)
+	SHADER_PARAMETER(unsigned int, cells)
+	SHADER_PARAMETER(unsigned int, impulses_per_cell)
+	SHADER_PARAMETER(unsigned int, seed)
+	SHADER_PARAMETER(float, frequency_scale)
+	SHADER_PARAMETER(unsigned int, region_mode)
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, bluenoise_tiling_texture)
+END_SHADER_PARAMETER_STRUCT()
+class FGaborBlueNoiseTextureTilingCS : public FGlobalShader
+{
+public:
+	DECLARE_EXPORTED_SHADER_TYPE(FGaborBlueNoiseTextureTilingCS, Global, );
+	using FParameters = FGaborBlueNoiseTextureTilingParameters;
+	SHADER_USE_PARAMETER_STRUCT(FGaborBlueNoiseTextureTilingCS, FGlobalShader);
 };

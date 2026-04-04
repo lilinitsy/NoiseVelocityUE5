@@ -1,0 +1,134 @@
+#include "GaborBlueNoiseTextureTilingViewExtension.h"
+#include "CustomComputeShaders.h"
+
+#include "GenerateMips.h"
+#include "PostProcess/PostProcessing.h"
+#include "RenderGraphUtils.h"
+
+
+FGaborBlueNoiseTextureTilingViewExtension::FGaborBlueNoiseTextureTilingViewExtension(const FAutoRegister& auto_register, FVector2f foveation_center, float radius_fovea, float radius_periphery, float screen_width_cm, float screen_height_cm, float distance_from_screen_cm, float blur_rate_arcmin_per_degree, unsigned int use_radially_increasing_blur, float s_k, unsigned int cells, unsigned int impulses_per_cell, unsigned int seed, UTexture2D *bluenoise_tiling_texture) :
+	FSceneViewExtensionBase(auto_register),
+	foveation_center(foveation_center),
+	radius_fovea(radius_fovea),
+	radius_periphery(radius_periphery),
+	screen_width_cm(screen_width_cm),
+	screen_height_cm(screen_height_cm),
+	distance_from_screen_cm(distance_from_screen_cm),
+	blur_rate_arcmin_per_degree(blur_rate_arcmin_per_degree),
+	use_radially_increasing_blur(use_radially_increasing_blur),
+	s_k(s_k),
+	cells(cells),
+	impulses_per_cell(impulses_per_cell),
+	seed(seed),
+	bluenoise_tiling_texture(bluenoise_tiling_texture)
+{
+}
+
+
+// This runs the gaussian blur AND gabor enhancement
+void FGaborBlueNoiseTextureTilingViewExtension::PrePostProcessPass_RenderThread(
+	FRDGBuilder& graph_builder,
+	const FSceneView& view,
+	const FPostProcessingInputs& inputs)
+{
+
+	FRDGTextureRef scene_colour = (*inputs.SceneTextures)->SceneColorTexture;
+	FRDGTextureDesc desc = scene_colour->Desc;
+	desc.Flags |= TexCreate_UAV;
+	desc.NumMips = 5;
+
+	FRDGTextureRef blur_output = graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
+
+	TShaderMapRef<FGaussianBlurCS> blur_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	FGaussianBlurCS::FParameters* blur_params = graph_builder.AllocParameters<FGaussianBlurCS::FParameters>();
+	
+
+
+	blur_params->input_texture = scene_colour;
+	blur_params->Input_Sampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+	blur_params->output_texture = graph_builder.CreateUAV(blur_output);
+
+	blur_params->foveation_center = foveation_center;
+	blur_params->radius_fovea = radius_fovea;
+	blur_params->radius_periphery = radius_periphery;
+	blur_params->screen_width_cm = screen_width_cm;
+	blur_params->screen_height_cm = screen_height_cm;
+	blur_params->distance_from_screen = distance_from_screen_cm; // for gaussian blur, it's just called "distance_from_screen"
+	blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
+	blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
+
+	const FIntVector group_count(
+		FMath::DivideAndRoundUp(desc.Extent.X, 16),
+		FMath::DivideAndRoundUp(desc.Extent.Y, 16),
+		1);
+
+	graph_builder.AddPass(
+		RDG_EVENT_NAME("GaussianBlurCS"),
+		blur_params,
+		ERDGPassFlags::Compute,
+		[blur_cs, blur_params, group_count](FRHICommandList& rhi_cmd_list)
+		{
+			FComputeShaderUtils::Dispatch(rhi_cmd_list, blur_cs, *blur_params, group_count);
+		});
+
+	// Generate mips so that the amplitude estimator works
+	FGenerateMipsParams generate_mips_params = {};
+	FGenerateMips::Execute(graph_builder, GMaxRHIFeatureLevel, blur_output, generate_mips_params);
+
+	// gabor noise
+	FRDGTextureRef combined_noise_output = graph_builder.CreateTexture(desc, TEXT("gabor_combined_noise_output"));
+	FRDGTextureRef noise_output = graph_builder.CreateTexture(desc, TEXT("gabor_noise_output"));
+
+	TShaderMapRef<FGaborBlueNoiseTextureTilingCS> noise_cs(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	FGaborBlueNoiseTextureTilingCS::FParameters* noise_params = graph_builder.AllocParameters<FGaborBlueNoiseTextureTilingCS::FParameters>();
+
+	// Get the texture
+	if (bluenoise_tiling_texture && bluenoise_tiling_texture->GetResource())
+	{
+		// Get RHI handle
+		FTextureRHIRef bluenoise_tiling_texture_rhi = bluenoise_tiling_texture->GetResource()->TextureRHI;
+		
+		// Register with graph builder
+		FRDGTextureRef bluenoise_rdg_texture = graph_builder.RegisterExternalTexture(CreateRenderTarget(bluenoise_tiling_texture_rhi, TEXT("bluenoise_tiling_texture")));
+
+		// Bind the texture
+		noise_params->bluenoise_tiling_texture = bluenoise_rdg_texture;
+	}
+
+	noise_params->input_foveated = blur_output;
+	noise_params->LinearSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+	noise_params->output_texture = graph_builder.CreateUAV(combined_noise_output);
+	noise_params->output_noise_texture = graph_builder.CreateUAV(noise_output);
+
+	noise_params->foveation_center = foveation_center;
+	noise_params->screen_width_cm = screen_width_cm;
+	noise_params->screen_height_cm = screen_height_cm;
+	noise_params->distance_from_screen_cm = distance_from_screen_cm;
+	noise_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
+	noise_params->use_radially_increasing_blur = use_radially_increasing_blur;
+	noise_params->s_k = s_k;
+	noise_params->cells = cells;
+	noise_params->impulses_per_cell = impulses_per_cell;
+	noise_params->seed = seed;
+	noise_params->frequency_scale = 1.0f; // TODO: Update this programmatically
+	noise_params->region_mode = 0;
+
+	const FIntVector gabor_group_count(
+		FMath::DivideAndRoundUp(desc.Extent.X, 16),
+		FMath::DivideAndRoundUp(desc.Extent.Y, 16),
+		1);
+
+	graph_builder.AddPass(
+		RDG_EVENT_NAME("GaborNoiseEnhancementCS"),
+		noise_params,
+		ERDGPassFlags::Compute,
+		[noise_cs, noise_params, gabor_group_count](FRHICommandList& rhi_cmd_list)
+		{
+			FComputeShaderUtils::Dispatch(rhi_cmd_list, noise_cs, *noise_params, gabor_group_count);
+		});
+
+
+	// copy final back to scene colour
+	AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour);
+}
+
