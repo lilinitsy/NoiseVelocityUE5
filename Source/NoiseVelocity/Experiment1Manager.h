@@ -84,9 +84,9 @@ public:
 	float radius_periphery = 0.2f; // TODO: Make this use degrees
 
 	UPROPERTY(EditAnywhere, Category = "Setup Settings")
-	float screen_width_cm = 60.0f;
+	float screen_width_cm = 120.0f;
 	UPROPERTY(EditAnywhere, Category = "Setup Settings")
-	float screen_height_cm = 30.0f;
+	float screen_height_cm = 60.0f;
 	UPROPERTY(EditAnywhere, Category = "Setup Settings")
 	float distance_from_screen_cm = 71.0f;
 
@@ -141,6 +141,10 @@ public:
 	uint32  current_trial_index = 0;
 	EXPERIMENT_STATE experiment_state = EXPERIMENT_STATE::WAITING_FOR_INPUT;
 
+	// Original object locations for resetting the state
+	FTransform left_object_original_transform;
+	FTransform right_object_original_transform;
+
 	TArray<Trial> trials;
 
 
@@ -149,4 +153,6 @@ public:
 	void initialize_trials();
 	void start_trial();
 	void on_response_recorded();
+
+	FVector eccentricity_to_world_pos(float eccentricity_deg, LEFTRIGHT side, float z_cm);
 };

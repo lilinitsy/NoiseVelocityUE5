@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Camera/CameraComponent.h"
 
 #include "GaborEnhancementWithRerenderingViewExtension.h"
 
@@ -32,7 +33,9 @@ public:
 
 	TSharedPtr<FGaborEnhancementWithRerenderingViewExtension, ESPMode::ThreadSafe> view_extension;
 
-	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* CameraComponent;
+
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float blur_rate_arcmin_per_degree = 0.34;
 	
@@ -63,5 +66,5 @@ public:
 
 
 	void toggle_screenshot();
-
+	void update_view_extension();
 };

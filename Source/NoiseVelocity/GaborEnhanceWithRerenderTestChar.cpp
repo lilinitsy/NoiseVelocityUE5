@@ -10,6 +10,11 @@ AGaborEnhanceWithRerenderTestChar::AGaborEnhanceWithRerenderTestChar()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	CameraComponent->SetupAttachment(RootComponent);
+	CameraComponent->SetRelativeLocation(FVector(0.f, 0.f, 0.f));
+	CameraComponent->bUsePawnControlRotation = false;
+
 }
 
 // Called when the game starts or when spawned
@@ -20,13 +25,16 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 	const FVector2f foveation_center(0.5f, 0.5f); // middle
 	const float radius_fovea = 0.1f;
 	const float radius_periphery = 0.2f;
-	const float screen_width_cm = 60.0f;
-	const float screen_height_cm = 30.0f;
+	const float screen_width_cm = 120.0f;
+	const float screen_height_cm = 60.0f;
 	const float distance_from_screen_cm = 71.0f;
 	const float s_k = 21.02f;
 	const unsigned int cells = 64;
 	const unsigned int impulses_per_cell = 32;
 	const unsigned int seed = 10;
+	float fov_deg = 2.0f * FMath::RadiansToDegrees(FMath::Atan((screen_width_cm / 2.0f) / distance_from_screen_cm));
+	//float fov_deg = 100.0f;
+	CameraComponent->SetFieldOfView(fov_deg);
 
 	view_extension = FSceneViewExtensions::NewExtension<FGaborEnhancementWithRerenderingViewExtension>(
 		render_every_n_frames,
@@ -84,4 +92,16 @@ void AGaborEnhanceWithRerenderTestChar::toggle_screenshot()
 {
 	UE_LOG(LogTemp, Log, TEXT("Screenshot taken"));
 	take_screenshot = !take_screenshot;
+}
+
+void AGaborEnhanceWithRerenderTestChar::update_view_extension()
+{
+	view_extension->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
+	view_extension->use_radially_increasing_blur = use_radially_increasing_blur;
+	view_extension->render_every_n_frames = render_every_n_frames;
+	view_extension->frequency_scale = frequency_scale;
+	view_extension->phase_cycles_per_sec = phase_cycles_per_sec;
+	view_extension->phase_strength = phase_strength;
+	view_extension->region_mode = region_mode;
+	view_extension->comparison_mode = comparison_mode;
 }

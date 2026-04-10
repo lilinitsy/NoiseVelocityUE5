@@ -34,17 +34,17 @@ public:
 	TRefCountPtr<IPooledRenderTarget> cached_noise_texture;
 	uint32 frame_counter = 0;
 	float running_time = 0.0f;
-	const uint32 render_every_n_frames;
+	uint32 render_every_n_frames;
 
 	FVector2f foveation_center;
-	const float radius_fovea;
-	const float radius_periphery;
-	const float screen_width_cm;
-	const float screen_height_cm;
-	const float distance_from_screen_cm;
-	const float blur_rate_arcmin_per_degree;
-	const unsigned int use_radially_increasing_blur;
-	const float s_k;
+	float radius_fovea;
+	float radius_periphery;
+	float screen_width_cm;
+	float screen_height_cm;
+	float distance_from_screen_cm;
+	float blur_rate_arcmin_per_degree;
+	unsigned int use_radially_increasing_blur;
+	float s_k;
 	unsigned int cells;
 	unsigned int impulses_per_cell;
 	unsigned int static_seed; // For generating noise to be deterministic (but not the rerendered)

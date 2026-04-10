@@ -135,15 +135,16 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	}
 	
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
-	
+	float grayed_eccentricity = 10.0f;
+
 	// DO NOT RENDER FOVEA
 	// TODO: add radius_fovea and radius_periphery here and use those instead.
-	if (length(foveation_center - uv) <= 0.2f)
-	{
-		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
+    if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity)
+    {
+        output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
 		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f); // no noise
-		return;
-	}
+        return;
+    }
 
 	float2 x_extents; // get it in pixel space, then convert to uv
 	if (region_mode == 0) // full scene

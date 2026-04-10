@@ -3,6 +3,10 @@
 
 #include "Experiment1Manager.h"
 
+#include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Camera/PlayerCameraManager.h"
+
 
 // Sets default values
 AExperiment1Manager::AExperiment1Manager()
@@ -19,23 +23,22 @@ void AExperiment1Manager::BeginPlay()
 
 	set_actor_to_mobile(left_moving_object);
 	set_actor_to_mobile(right_moving_object);
+	left_object_original_transform = left_moving_object->GetTransform();
+	right_object_original_transform = right_moving_object->GetTransform();
 
 	initialize_trials();
 
 	APlayerController* pc = GetWorld()->GetFirstPlayerController();
 	if (pc)
 	{
-		UE_LOG(LogTemp, Log, TEXT("plaercontroller hit"));
 		EnableInput(pc);
 		if (InputComponent)
 		{
-			UE_LOG(LogTemp, Log, TEXT("input component found"));
 			InputComponent->BindAction("RecordResponse", IE_Pressed, this, &AExperiment1Manager::on_response_recorded);
 		}
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("Experiment ready. Press spacebar to start trial 1 of %d."), trials.Num());
-
 }
 
 
@@ -57,17 +60,34 @@ void AExperiment1Manager::start_trial()
 		return;
 	}
 
+	const Trial trial = trials[current_trial_index];
+
 	// Reset all timers and motion state for the new trial
 	total_trial_time = 0.0f;
 	left_running_oscillation_timer = 0.0f;
 	right_running_oscillation_timer = 0.0f;
 	left_framecount = 0;
 	left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
+	left_moving_object->SetActorTransform(left_object_original_transform);
+	right_moving_object->SetActorTransform(right_object_original_transform);
+	float z_distance = FMath::Abs(user->GetActorLocation().Y - left_moving_object->GetActorLocation().Y);
+
+	FVector left_location = eccentricity_to_world_pos(trial.eccentricity, trial.leftright, z_distance);
+	FVector right_location = left_location;
+	right_location.Y *= -1.0f; // flip the y (leftright) axis
+	left_moving_object->SetActorLocation(left_location);
+	right_moving_object->SetActorLocation(right_location);
+
+
+	// Assign new, and relevant, camera properties
+	// Stimuli update?
+	// Also need to get the right actor transforms based on eccentricity
+	user->region_mode = (trial.leftright == LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
+	user->update_view_extension();
 
 	experiment_state = EXPERIMENT_STATE::TRIAL_RUNNING;
 
-	const Trial& t = trials[current_trial_index];
-	UE_LOG(LogTemp, Log, TEXT("Starting trial %d / %d"), current_trial_index + 1, trials.Num());
+	UE_LOG(LogTemp, Log, TEXT("Starting trial %d / %d"), current_trial_index, trials.Num());
 
 }
 
@@ -207,4 +227,27 @@ void AExperiment1Manager::initialize_trials()
 		trials.Swap(i, j);
 	}
 
+}
+
+
+FVector AExperiment1Manager::eccentricity_to_world_pos(float eccentricity_deg, LEFTRIGHT side, float z_cm)
+{
+	APlayerCameraManager* camera = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	check(camera);
+
+	float actual_fov = camera->GetFOVAngle();
+	float half_fov_rad = FMath::DegreesToRadians(actual_fov / 2.0f);
+
+	float x_screen_cm = distance_from_screen_cm * FMath::Tan(FMath::DegreesToRadians(eccentricity_deg));
+	float ndc_x = x_screen_cm / (screen_width_cm / 2.0f);
+	float lateral_cm = ndc_x * z_cm * FMath::Tan(half_fov_rad);
+
+	UE_LOG(LogTemp, Log, TEXT("ecc=%.1f | fov=%.1f | x_screen=%.2f | screen_half=%.1f | ndc=%.3f | z=%.1f | lateral=%.2f"), eccentricity_deg, actual_fov, x_screen_cm, screen_width_cm / 2.0f, ndc_x, z_cm, lateral_cm);
+
+	float sign = (side == LEFTRIGHT::LEFT) ? -1.0f : 1.0f;
+	FRotationMatrix rot(camera->GetCameraRotation());
+	FVector forward = rot.GetUnitAxis(EAxis::X);
+	FVector right = rot.GetUnitAxis(EAxis::Y);
+
+	return camera->GetCameraLocation() + forward * z_cm + right * (sign * lateral_cm);
 }
