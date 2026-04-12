@@ -95,6 +95,12 @@ public:
 
 
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
+	UMaterialInterface* stimuli0_material;
+
+	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
+	UMaterialInterface* stimuli1_material;
+
+	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
 	FRotator left_rotation_deg_per_second = FRotator(0.0f, 0.0f, 90.0f);
 
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
@@ -176,6 +182,7 @@ public:
 	FVector eccentricity_to_world_pos(float eccentricity_deg, EXP1_ALT_LEFTRIGHT side, float z_cm);
 	float choose_initial_velocity_for_stimuli(int tgt_framerate, int every_n_fps, float freq);
 	void set_screen_black(bool black);
+	void apply_material_for_stimuli(EXP1_ALT_STIMULI stimuli);
 
 
 };

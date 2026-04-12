@@ -90,6 +90,7 @@ public:
 	float distance_from_screen_cm = 71.0f;
 
 
+
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
 	FRotator left_rotation_deg_per_second = FRotator(0.0f, 0.0f, 90.0f);
 

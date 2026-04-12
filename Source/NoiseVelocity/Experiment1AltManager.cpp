@@ -91,7 +91,7 @@ void AExperiment1AltManager::on_response_recorded()
 void AExperiment1AltManager::on_increase_velocity()
 {
 	current_velocity_magnitude += 50.0f;
-	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 0.5f, 12.0f);
+	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 50.0f, 1200.0f);
 	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) == 0 ? current_velocity_magnitude : FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
 	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) == 0 ? -current_velocity_magnitude : FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
 }
@@ -99,8 +99,7 @@ void AExperiment1AltManager::on_increase_velocity()
 void AExperiment1AltManager::on_decrease_velocity()
 {
 	current_velocity_magnitude -= 50.0f;
-	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 0.5f, 12.0f);
-	current_velocity_magnitude = FMath::Max(0.0f, current_velocity_magnitude);
+	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 50.0f, 1200.0f);
 	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) == 0 ? current_velocity_magnitude : FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
 	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) == 0 ? -current_velocity_magnitude : FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
 }
@@ -133,7 +132,7 @@ void AExperiment1AltManager::start_trial()
 	current_velocity_magnitude = trial.velocity;
 	left_translation_meters_per_second.Z = current_velocity_magnitude;
 	right_translation_meters_per_second.Z = -current_velocity_magnitude; // other way than left
-
+	apply_material_for_stimuli(trial.stimuli);
 	// Assign new, and relevant, camera properties
 	// Stimuli update?
 	// Also need to get the right actor transforms based on eccentricity
@@ -152,69 +151,77 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	//DeltaTime = 0.0167f;
-
 	if (experiment_state != EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
 		return;
 	}
-
 	if (left_moving_object && right_moving_object)
 	{
 		float left_z = left_moving_object->GetActorLocation().Z;
 		if (left_z >= oscillation_max_z && left_translation_meters_per_second.Z > 0.0f)
 		{
 			left_translation_meters_per_second.Z = -current_velocity_magnitude;
+			FVector loc = left_moving_object->GetActorLocation();
+			loc.Z = oscillation_max_z;
+			left_moving_object->SetActorLocation(loc);
 		}
+
 		else if (left_z <= oscillation_min_z && left_translation_meters_per_second.Z < 0.0f)
 		{
 			left_translation_meters_per_second.Z = current_velocity_magnitude;
+			FVector loc = left_moving_object->GetActorLocation();
+			loc.Z = oscillation_min_z;
+			left_moving_object->SetActorLocation(loc);
 		}
 
 		FVector left_delta_translation = left_translation_meters_per_second * DeltaTime;
 		FRotator left_delta_rotation = left_rotation_deg_per_second * DeltaTime;
 		left_delta_movement += left_delta_translation;
-
 		if (render_same_fps)
 		{
-			FTransform left_delta_transform = FTransform(left_delta_rotation, left_delta_translation, FVector(1.0f, 1.0f, 1.0f));
-			left_moving_object->AddActorLocalTransform(left_delta_transform);
+			left_moving_object->AddActorLocalRotation(left_delta_rotation);
+			left_moving_object->AddActorLocalOffset(left_delta_translation);
 		}
+
 		else
 		{
 			if (left_framecount % render_every_n_frames == 0)
 			{
-				FTransform left_delta_transform = FTransform(left_delta_rotation, left_delta_movement, FVector(1.0f, 1.0f, 1.0f));
+				left_moving_object->AddActorLocalRotation(left_delta_rotation);
+				left_moving_object->AddActorLocalOffset(left_delta_movement);
 				left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
-				left_moving_object->AddActorLocalTransform(left_delta_transform);
 			}
 		}
 
 		left_framecount++;
 
-		//if (total_trial_time > right_delay_time)
-		//{
 		float right_z = right_moving_object->GetActorLocation().Z;
-		if(right_z >= oscillation_max_z && right_translation_meters_per_second.Z > 0.0f)
+		if (right_z >= oscillation_max_z && right_translation_meters_per_second.Z > 0.0f)
 		{
 			right_translation_meters_per_second.Z = -current_velocity_magnitude;
+			FVector loc = right_moving_object->GetActorLocation();
+			loc.Z = oscillation_max_z;
+			right_moving_object->SetActorLocation(loc);
 		}
-		else if(right_z <= oscillation_min_z && right_translation_meters_per_second.Z < 0.0f)
+
+		else if (right_z <= oscillation_min_z && right_translation_meters_per_second.Z < 0.0f)
 		{
 			right_translation_meters_per_second.Z = current_velocity_magnitude;
+			FVector loc = right_moving_object->GetActorLocation();
+			loc.Z = oscillation_min_z;
+			right_moving_object->SetActorLocation(loc);
 		}
 
-		FVector    right_delta_translation = right_translation_meters_per_second * DeltaTime;
-		FRotator   right_delta_rotation    = right_rotation_deg_per_second * DeltaTime;
-		FTransform right_delta_transform   = FTransform(right_delta_rotation, right_delta_translation, FVector(1.0f, 1.0f, 1.0f));
-		right_moving_object->AddActorLocalTransform(right_delta_transform);
-		//}
+		FVector right_delta_translation = right_translation_meters_per_second * DeltaTime;
+		FRotator right_delta_rotation = right_rotation_deg_per_second * DeltaTime;
+		FTransform right_delta_transform = FTransform(right_delta_rotation, right_delta_translation, FVector(1.0f, 1.0f, 1.0f));
+		right_moving_object->AddActorLocalRotation(right_delta_rotation);
+		right_moving_object->AddActorLocalOffset(right_delta_translation);
 	}
-
 	else
 	{
 		UE_LOG(LogTemp, Log, TEXT("NO ACTOR FOUND"));
 	}
-
 	total_trial_time += DeltaTime;
 }
 
@@ -325,4 +332,33 @@ float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framer
 
 
 	return velocity;
+}
+
+void AExperiment1AltManager::apply_material_for_stimuli(EXP1_ALT_STIMULI stimuli)
+{
+	UMaterialInterface* mat = (stimuli == EXP1_ALT_STIMULI::STIMULI0) ? stimuli0_material : stimuli1_material;
+	if (!mat)
+	{
+		return;
+	}
+
+	TArray<UStaticMeshComponent*> left_mesh_components;
+	left_moving_object->GetComponents<UStaticMeshComponent>(left_mesh_components);
+	for (UStaticMeshComponent* mesh : left_mesh_components)
+	{
+		for (int32 i = 0; i < mesh->GetNumMaterials(); i++)
+		{
+			mesh->SetMaterial(i, mat);
+		}
+	}
+
+	TArray<UStaticMeshComponent*> right_mesh_components;
+	right_moving_object->GetComponents<UStaticMeshComponent>(right_mesh_components);
+	for (UStaticMeshComponent* mesh : right_mesh_components)
+	{
+		for (int32 i = 0; i < mesh->GetNumMaterials(); i++)
+		{
+			mesh->SetMaterial(i, mat);
+		}
+	}
 }
