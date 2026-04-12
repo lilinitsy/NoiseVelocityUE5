@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Experiment1Manager.h"
+#include "Experiment1AltManager.h"
 
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -9,15 +9,15 @@
 
 
 // Sets default values
-AExperiment1Manager::AExperiment1Manager()
+AExperiment1AltManager::AExperiment1AltManager()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 }
 
 // Called when the game starts or when spawned
-void AExperiment1Manager::BeginPlay()
+void AExperiment1AltManager::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -34,7 +34,9 @@ void AExperiment1Manager::BeginPlay()
 		EnableInput(pc);
 		if (InputComponent)
 		{
-			InputComponent->BindAction("RecordResponse", IE_Pressed, this, &AExperiment1Manager::on_response_recorded);
+			InputComponent->BindAction("RecordResponse", IE_Pressed, this, &AExperiment1AltManager::on_response_recorded);
+			InputComponent->BindAction("IncreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_increase_velocity);
+			InputComponent->BindAction("DecreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_decrease_velocity);
 		}
 	}
 
@@ -43,16 +45,32 @@ void AExperiment1Manager::BeginPlay()
 
 
 
-void AExperiment1Manager::on_response_recorded()
+void AExperiment1AltManager::on_response_recorded()
 {
 	UE_LOG(LogTemp, Log, TEXT("on_response_recorded triggered"));
-	if (experiment_state == EXP1_EXPERIMENT_STATE::WAITING_FOR_INPUT)
+	if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::WAITING_FOR_INPUT)
 	{
 		start_trial();
 	}
 }
 
-void AExperiment1Manager::start_trial()
+void AExperiment1AltManager::on_increase_velocity()
+{
+	current_velocity_magnitude += 50.0f;
+	current_velocity_magnitude = FMath::Max(0.0f, current_velocity_magnitude);
+	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
+	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
+}
+
+void AExperiment1AltManager::on_decrease_velocity()
+{
+	current_velocity_magnitude -= 50.0f;
+	current_velocity_magnitude = FMath::Max(0.0f, current_velocity_magnitude);
+	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
+	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
+}
+
+void AExperiment1AltManager::start_trial()
 {
 	if (current_trial_index >= static_cast<uint32>(trials.Num()))
 	{
@@ -60,7 +78,7 @@ void AExperiment1Manager::start_trial()
 		return;
 	}
 
-	const Exp1Trial trial = trials[current_trial_index];
+	const Exp1AltTrial trial = trials[current_trial_index];
 
 	// Reset all timers and motion state for the new trial
 	total_trial_time = 0.0f;
@@ -77,15 +95,17 @@ void AExperiment1Manager::start_trial()
 	right_location.Y *= -1.0f; // flip the y (leftright) axis
 	left_moving_object->SetActorLocation(left_location);
 	right_moving_object->SetActorLocation(right_location);
-
+	current_velocity_magnitude = trial.velocity;
+	left_translation_meters_per_second.Z = current_velocity_magnitude;
+	right_translation_meters_per_second.Z = current_velocity_magnitude;
 
 	// Assign new, and relevant, camera properties
 	// Stimuli update?
 	// Also need to get the right actor transforms based on eccentricity
-	user->region_mode = (trial.leftright == EXP1_LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
+	user->region_mode = (trial.leftright == EXP1_ALT_LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
 	user->update_view_extension();
 
-	experiment_state = EXP1_EXPERIMENT_STATE::TRIAL_RUNNING;
+	experiment_state = EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING;
 
 	UE_LOG(LogTemp, Log, TEXT("Starting trial %d / %d"), current_trial_index, trials.Num());
 
@@ -93,13 +113,13 @@ void AExperiment1Manager::start_trial()
 
 
 // Called every frame
-void AExperiment1Manager::Tick(float DeltaTime)
+void AExperiment1AltManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 	//DeltaTime = 0.0167f;
 
-	if (experiment_state != EXP1_EXPERIMENT_STATE::TRIAL_RUNNING)
+	if (experiment_state != EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
 		return;
 	}
@@ -174,14 +194,14 @@ void AExperiment1Manager::Tick(float DeltaTime)
 
 	if (total_trial_time >= trial_length_time)
 	{
-		experiment_state = EXP1_EXPERIMENT_STATE::WAITING_FOR_INPUT;
+		experiment_state = EXP1_ALT_EXPERIMENT_STATE::WAITING_FOR_INPUT;
 		current_trial_index++;
 		UE_LOG(LogTemp, Log, TEXT("Trial complete. Press spacebar for next trial. (%d remaining)"), trials.Num() - current_trial_index);
 	}
 
 }
 
-void AExperiment1Manager::set_actor_to_mobile(AActor* actor)
+void AExperiment1AltManager::set_actor_to_mobile(AActor* actor)
 {
 	if (actor)
 	{
@@ -194,13 +214,13 @@ void AExperiment1Manager::set_actor_to_mobile(AActor* actor)
 }
 
 
-void AExperiment1Manager::initialize_trials()
+void AExperiment1AltManager::initialize_trials()
 {
 	trials.Empty();
 
-	for (int s = 0; s < static_cast<int>(EXP1_STIMULI::COUNT); s++)
+	for (int s = 0; s < static_cast<int>(EXP1_ALT_STIMULI::COUNT); s++)
 	{
-		for (int lr = 0; lr < static_cast<int>(EXP1_LEFTRIGHT::COUNT); lr++)
+		for (int lr = 0; lr < static_cast<int>(EXP1_ALT_LEFTRIGHT::COUNT); lr++)
 		{
 			for (int e = 0; e < 3; e++)
 			{
@@ -208,16 +228,14 @@ void AExperiment1Manager::initialize_trials()
 				{
 					for (int rc = 0; rc < 3; rc++)
 					{
-						for(int rep = 0; rep < num_repetitions; rep++)
-						{
-							Exp1Trial t;
-							t.stimuli      = static_cast<EXP1_STIMULI>(s);
-							t.leftright    = static_cast<EXP1_LEFTRIGHT>(lr);
-							t.render_every_n_fps = render_every_n_fps_list[rc];
-							t.eccentricity = eccentricities[e];
-							t.frequency    = frequencies[f];
-							trials.Add(t);
-						}
+						Exp1AltTrial t;
+						t.stimuli = static_cast<EXP1_ALT_STIMULI>(s);
+						t.leftright = static_cast<EXP1_ALT_LEFTRIGHT>(lr);
+						t.render_every_n_fps = render_every_n_fps_list[rc];
+						t.eccentricity = eccentricities[e];
+						t.frequency = frequencies[f];
+						t.velocity = choose_initial_velocity_for_stimuli(target_framerate, render_every_n_fps_list[rc], frequencies[f]);
+						trials.Add(t);				
 					}
 				}
 			}
@@ -234,7 +252,7 @@ void AExperiment1Manager::initialize_trials()
 }
 
 
-FVector AExperiment1Manager::eccentricity_to_world_pos(float eccentricity_deg, EXP1_LEFTRIGHT side, float z_cm)
+FVector AExperiment1AltManager::eccentricity_to_world_pos(float eccentricity_deg, EXP1_ALT_LEFTRIGHT side, float z_cm)
 {
 	APlayerCameraManager* camera = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
 	check(camera);
@@ -248,10 +266,46 @@ FVector AExperiment1Manager::eccentricity_to_world_pos(float eccentricity_deg, E
 
 	UE_LOG(LogTemp, Log, TEXT("ecc=%.1f | fov=%.1f | x_screen=%.2f | screen_half=%.1f | ndc=%.3f | z=%.1f | lateral=%.2f"), eccentricity_deg, actual_fov, x_screen_cm, screen_width_cm / 2.0f, ndc_x, z_cm, lateral_cm);
 
-	float sign = (side == EXP1_LEFTRIGHT::LEFT) ? -1.0f : 1.0f;
+	float sign = (side == EXP1_ALT_LEFTRIGHT::LEFT) ? -1.0f : 1.0f;
 	FRotationMatrix rot(camera->GetCameraRotation());
 	FVector forward = rot.GetUnitAxis(EAxis::X);
 	FVector right = rot.GetUnitAxis(EAxis::Y);
 
 	return camera->GetCameraLocation() + forward * z_cm + right * (sign * lateral_cm);
+}
+
+float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framerate, int every_n_fps, float freq)
+{
+	float velocity = 10.0f;
+
+	// Based on table of observations from grass stimulus
+	// Always choose something where it's perceptible first (whether mildly or quite so)
+	if (tgt_framerate == 60)
+	{
+		if (freq >= 0.5f) // frequency_scale is 1
+		{
+			if (every_n_fps == 1) // intervention is 60fps
+			{
+				float randnum = FMath::RandRange(200.0f, 800.0f);
+				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+			}
+
+			else if (every_n_fps == 2) // intervention is 30fps
+			{
+				float randnum = FMath::RandRange(400.0f, 800.0f);
+				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+			}
+
+			else if (every_n_fps == 3) // intervention is 20fps
+			{
+				float randnum = FMath::RandRange(300.0f, 500.0f);
+				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+			}
+		}
+	}
+
+	// TODO: For 50, 40, and 30hz baseline
+
+
+	return velocity;
 }

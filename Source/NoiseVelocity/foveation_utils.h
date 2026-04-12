@@ -6,6 +6,10 @@
 // Any function implemented in here HAS to be declared
 // inline, otherwise the MSVC linker errors
 
+const static int eccentricities[3] = { 15, 20, 30 }; // maybe only do 2?
+const static float frequencies[2] = { 1.0f, 0.75f };
+const static int render_every_n_fps_list[3] = { 1, 2, 3 };
+const static int num_repetitions = 2; // deprecate
 
 
 inline float rad2deg(float rad)

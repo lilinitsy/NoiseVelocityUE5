@@ -163,6 +163,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		FRDGTextureRef cached_base = graph_builder.RegisterExternalTexture(cached_base_image, TEXT("cached_base_image"));
 		FRDGTextureRef previous_noise = graph_builder.RegisterExternalTexture(cached_noise_texture, TEXT("previous_noise"));
 		noise_params->most_recently_rendered_image = cached_base;
+
 		// This only happens if NOT comparing the same FPS side by side, noise vs blur
 		// In this case, we need to rerender the gaussian blur every frame, but not update
 		// the cached base image (which gets rendered into whichever side has noise)

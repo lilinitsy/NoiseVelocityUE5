@@ -297,7 +297,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	}
 
 	// If we're comparing same fps, use the cached image
-	else if(comparison_mode == 0)
+	else if(comparison_mode == 0 || comparison_mode == 2)
 	{
 		output_texture[pixel_pos] = float4(foveated_cached, 1.0);
 	}

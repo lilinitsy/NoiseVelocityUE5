@@ -76,6 +76,11 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 
 		UE_LOG(LogTemp, Log, TEXT("Screenshot taken"));
 	}
+
+	// This requires actor to be set to Movable
+	/*FVector location = this->GetActorLocation();
+	location.X += 1.0f;
+	this->SetActorLocation(location);*/
 }
 
 // Called to bind functionality to input

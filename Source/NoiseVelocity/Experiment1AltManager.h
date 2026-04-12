@@ -8,11 +8,11 @@
 #include "GaborEnhanceWithRerenderTestChar.h"
 #include "foveation_utils.h"
 
-#include "Experiment1Manager.generated.h"
+#include "Experiment1AltManager.generated.h"
 
 
 
-enum class EXP1_STIMULI
+enum class EXP1_ALT_STIMULI
 {
 	STIMULI0, // placeholder
 	STIMULI1, // placeholder
@@ -20,7 +20,7 @@ enum class EXP1_STIMULI
 };
 
 // deprecate
-enum class EXP1_LEFTRIGHT
+enum class EXP1_ALT_LEFTRIGHT
 {
 	LEFT,
 	RIGHT,
@@ -28,18 +28,21 @@ enum class EXP1_LEFTRIGHT
 };
 
 
-
-
-struct Exp1Trial
+struct Exp1AltTrial
 {
-	EXP1_STIMULI stimuli;
-	EXP1_LEFTRIGHT leftright;
+	EXP1_ALT_STIMULI stimuli;
+	EXP1_ALT_LEFTRIGHT leftright;
 	int render_every_n_fps; // 1 = same, 2, or 3 are options
 	int eccentricity;
 	float frequency;
+	float velocity;
 };
 
-enum class EXP1_EXPERIMENT_STATE
+
+
+
+
+enum class EXP1_ALT_EXPERIMENT_STATE
 {
 	WAITING_FOR_INPUT,
 	TRIAL_RUNNING
@@ -50,13 +53,13 @@ enum class EXP1_EXPERIMENT_STATE
 // provides a more comprehensive way to manage the experiment.
 // STILL use RotateObjectActor for testing features!!!
 UCLASS()
-class NOISEVELOCITY_API AExperiment1Manager : public AActor
+class NOISEVELOCITY_API AExperiment1AltManager : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	AExperiment1Manager();
+	AExperiment1AltManager();
 
 protected:
 	// Called when the game starts or when spawned
@@ -129,6 +132,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
 	uint32 render_every_n_frames = 0;
 
+	// Adjust as monitor refresh rate is changed
+	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
+	uint32 target_framerate = 60; 
+
 	// for tracking whether to move
 	uint32 left_framecount = 0;
 	FVector left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
@@ -138,13 +145,16 @@ public:
 	float right_running_oscillation_timer = 0.0f;
 	float total_trial_time = 0.0f;
 	uint32  current_trial_index = 0;
-	EXP1_EXPERIMENT_STATE experiment_state = EXP1_EXPERIMENT_STATE::WAITING_FOR_INPUT;
+	EXP1_ALT_EXPERIMENT_STATE experiment_state = EXP1_ALT_EXPERIMENT_STATE::WAITING_FOR_INPUT;
 
 	// Original object locations for resetting the state
 	FTransform left_object_original_transform;
 	FTransform right_object_original_transform;
 
-	TArray<Exp1Trial> trials;
+	float current_velocity_magnitude = 0.0f;
+
+
+	TArray<Exp1AltTrial> trials;
 
 
 	void set_actor_to_mobile(AActor *actor);	
@@ -152,6 +162,9 @@ public:
 	void initialize_trials();
 	void start_trial();
 	void on_response_recorded();
+	void on_increase_velocity();
+	void on_decrease_velocity();
 
-	FVector eccentricity_to_world_pos(float eccentricity_deg, EXP1_LEFTRIGHT side, float z_cm);
+	FVector eccentricity_to_world_pos(float eccentricity_deg, EXP1_ALT_LEFTRIGHT side, float z_cm);
+	float choose_initial_velocity_for_stimuli(int tgt_framerate, int every_n_fps, float freq);
 };
