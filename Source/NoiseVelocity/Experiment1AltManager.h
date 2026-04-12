@@ -105,6 +105,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
 	FVector right_translation_meters_per_second = FVector(0.0f, 0.0f, 0.0f);
 
+	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
+	float oscillation_min_z = -100.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
+	float oscillation_max_z = 100.0f;
+
+
 
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
 	float oscillation_time = 1.0f; // how long to let it move before it bounces back and forth
