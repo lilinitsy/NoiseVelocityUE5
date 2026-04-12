@@ -44,35 +44,65 @@ void AExperiment1AltManager::BeginPlay()
 }
 
 
+void AExperiment1AltManager::set_screen_black(bool black)
+{
+	user->view_extension->is_active = !black;
+
+	APlayerCameraManager* camera = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	if (!camera)
+	{
+		return;
+	}
+	if (black)
+	{
+		camera->StartCameraFade(0.0f, 1.0f, 0.1f, FLinearColor::Black, false, true);
+	}
+
+	else
+	{
+		camera->StartCameraFade(1.0f, 0.0f, 0.1f, FLinearColor::Black, false, false);
+	}
+}
+
 
 void AExperiment1AltManager::on_response_recorded()
 {
+	UE_LOG(LogTemp, Log, TEXT("on_response_recorded triggered"));
+
 	if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::WAITING_FOR_INPUT)
 	{
+		experiment_state = EXP1_ALT_EXPERIMENT_STATE::BLACK_SCREEN;
+		set_screen_black(true);
+	}
+	else if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::BLACK_SCREEN)
+	{
+		set_screen_black(false);
 		start_trial();
 	}
 	else if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
 		current_trial_index++;
 		UE_LOG(LogTemp, Log, TEXT("Trial complete. (%d remaining)"), trials.Num() - current_trial_index);
-		start_trial();
+		experiment_state = EXP1_ALT_EXPERIMENT_STATE::BLACK_SCREEN;
+		set_screen_black(true);
 	}
 }
 
 void AExperiment1AltManager::on_increase_velocity()
 {
 	current_velocity_magnitude += 50.0f;
-	current_velocity_magnitude = FMath::Max(0.0f, current_velocity_magnitude);
-	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
-	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
+	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 0.5f, 12.0f);
+	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) == 0 ? current_velocity_magnitude : FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
+	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) == 0 ? -current_velocity_magnitude : FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
 }
 
 void AExperiment1AltManager::on_decrease_velocity()
 {
 	current_velocity_magnitude -= 50.0f;
+	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 0.5f, 12.0f);
 	current_velocity_magnitude = FMath::Max(0.0f, current_velocity_magnitude);
-	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
-	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
+	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) == 0 ? current_velocity_magnitude : FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
+	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) == 0 ? -current_velocity_magnitude : FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
 }
 
 void AExperiment1AltManager::start_trial()

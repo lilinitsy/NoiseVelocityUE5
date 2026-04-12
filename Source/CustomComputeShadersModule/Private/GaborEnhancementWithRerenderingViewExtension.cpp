@@ -48,6 +48,13 @@ FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingV
 {
 }
 
+bool FGaborEnhancementWithRerenderingViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& context) const
+{
+	return is_active;
+}
+
+
+
 void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThread(
 	FRDGBuilder& graph_builder,
 	const FSceneView& view,

@@ -44,8 +44,9 @@ struct Exp1AltTrial
 
 enum class EXP1_ALT_EXPERIMENT_STATE
 {
-	WAITING_FOR_INPUT,
-	TRIAL_RUNNING
+	WAITING_FOR_INPUT, // only used at start
+	BLACK_SCREEN,
+	TRIAL_RUNNING,
 };
 
 
@@ -174,4 +175,7 @@ public:
 
 	FVector eccentricity_to_world_pos(float eccentricity_deg, EXP1_ALT_LEFTRIGHT side, float z_cm);
 	float choose_initial_velocity_for_stimuli(int tgt_framerate, int every_n_fps, float freq);
+	void set_screen_black(bool black);
+
+
 };

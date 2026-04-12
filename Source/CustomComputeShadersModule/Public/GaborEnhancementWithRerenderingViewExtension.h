@@ -30,6 +30,10 @@ public:
 	virtual void BeginRenderViewFamily(FSceneViewFamily& in_view_family) override {}
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& graph_builder, const FSceneView& view, const FPostProcessingInputs& inputs) override;
 
+	// for setting camera black between trials
+	bool is_active = true;
+	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& context) const override;
+
 	TRefCountPtr<IPooledRenderTarget> cached_base_image;
 	TRefCountPtr<IPooledRenderTarget> cached_noise_texture;
 	uint32 frame_counter = 0;
