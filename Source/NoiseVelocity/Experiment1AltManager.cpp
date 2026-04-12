@@ -47,9 +47,14 @@ void AExperiment1AltManager::BeginPlay()
 
 void AExperiment1AltManager::on_response_recorded()
 {
-	UE_LOG(LogTemp, Log, TEXT("on_response_recorded triggered"));
 	if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::WAITING_FOR_INPUT)
 	{
+		start_trial();
+	}
+	else if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING)
+	{
+		current_trial_index++;
+		UE_LOG(LogTemp, Log, TEXT("Trial complete. (%d remaining)"), trials.Num() - current_trial_index);
 		start_trial();
 	}
 }
@@ -97,7 +102,7 @@ void AExperiment1AltManager::start_trial()
 	right_moving_object->SetActorLocation(right_location);
 	current_velocity_magnitude = trial.velocity;
 	left_translation_meters_per_second.Z = current_velocity_magnitude;
-	right_translation_meters_per_second.Z = current_velocity_magnitude;
+	right_translation_meters_per_second.Z = -current_velocity_magnitude; // other way than left
 
 	// Assign new, and relevant, camera properties
 	// Stimuli update?
@@ -156,23 +161,23 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 
 		left_framecount++;
 
-		if (total_trial_time > right_delay_time)
+		//if (total_trial_time > right_delay_time)
+		//{
+		float right_z = right_moving_object->GetActorLocation().Z;
+		if(right_z >= oscillation_max_z && right_translation_meters_per_second.Z > 0.0f)
 		{
-			float right_z = right_moving_object->GetActorLocation().Z;
-			if (right_z >= oscillation_max_z && right_translation_meters_per_second.Z > 0.0f)
-			{
-				right_translation_meters_per_second.Z = -current_velocity_magnitude;
-			}
-			else if (right_z <= oscillation_min_z && right_translation_meters_per_second.Z < 0.0f)
-			{
-				right_translation_meters_per_second.Z = current_velocity_magnitude;
-			}
-
-			FVector right_delta_translation = right_translation_meters_per_second * DeltaTime;
-			FRotator right_delta_rotation = right_rotation_deg_per_second * DeltaTime;
-			FTransform right_delta_transform = FTransform(right_delta_rotation, right_delta_translation, FVector(1.0f, 1.0f, 1.0f));
-			right_moving_object->AddActorLocalTransform(right_delta_transform);
+			right_translation_meters_per_second.Z = -current_velocity_magnitude;
 		}
+		else if(right_z <= oscillation_min_z && right_translation_meters_per_second.Z < 0.0f)
+		{
+			right_translation_meters_per_second.Z = current_velocity_magnitude;
+		}
+
+		FVector    right_delta_translation = right_translation_meters_per_second * DeltaTime;
+		FRotator   right_delta_rotation    = right_rotation_deg_per_second * DeltaTime;
+		FTransform right_delta_transform   = FTransform(right_delta_rotation, right_delta_translation, FVector(1.0f, 1.0f, 1.0f));
+		right_moving_object->AddActorLocalTransform(right_delta_transform);
+		//}
 	}
 
 	else
@@ -181,13 +186,6 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 	}
 
 	total_trial_time += DeltaTime;
-
-	if (total_trial_time >= trial_length_time)
-	{
-		experiment_state = EXP1_ALT_EXPERIMENT_STATE::WAITING_FOR_INPUT;
-		current_trial_index++;
-		UE_LOG(LogTemp, Log, TEXT("Trial complete. Press spacebar for next trial. (%d remaining)"), trials.Num() - current_trial_index);
-	}
 }
 
 void AExperiment1AltManager::set_actor_to_mobile(AActor* actor)
