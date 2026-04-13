@@ -234,7 +234,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float3 foveated_cached = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
 
 	// Check that the bounds are proper to do noise
-	if (uv.x >= x_extents.x && uv.x <= x_extents.y)
+	if (comparison_mode != 2 && (uv.x >= x_extents.x && uv.x <= x_extents.y))
 	{
 		float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0);
 		float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
@@ -297,14 +297,15 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		output_texture[pixel_pos] = float4(final_colour, 1.0);
 	}
 
-	// If we're comparing same fps, use the cached image
-	else if(comparison_mode == 0 || comparison_mode == 2)
+	// If we're comparing same fps, use the cached image; for comparison_mode 2, 
+	// it will skip the noise rerendering pass and just use the cached foveated image
+	else if(comparison_mode == 0)
 	{
 		output_texture[pixel_pos] = float4(foveated_cached, 1.0);
 	}
 
 	// If not comparing same fps, use the most recently truly rendered image (yes, this is only possible with postprocessing)
-	else if (comparison_mode == 1)
+	else if (comparison_mode == 1 || comparison_mode == 2)
 	{
 		float3 foveated_most_recent = most_recently_rendered_image.SampleLevel(point_sampler, uv, 0).rgb;
 		output_texture[pixel_pos] = float4(foveated_most_recent, 1.0);
