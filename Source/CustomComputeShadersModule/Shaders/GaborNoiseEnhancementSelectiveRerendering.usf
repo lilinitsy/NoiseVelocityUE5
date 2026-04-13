@@ -199,8 +199,8 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	x_extents /= float2(texture_size.x, texture_size.x); // convert from pixel space to uv
 
 	float grayed_eccentricity = 10.0f;
-	float degrees_15 = 15.0f;
-	float degrees_20 = 20.0f;
+	float degrees_18 = 18.0f;
+	float degrees_24 = 24.0f;
 	float degrees_30 = 30.0f;
 
 	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity + 0.01f)
@@ -209,15 +209,16 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) >= degrees_15 - 0.01f &&
-		eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= degrees_15 + 0.01f)
+	/*
+	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) >= degrees_18 - 0.01f &&
+		eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= degrees_18 + 0.01f)
     {
         output_texture[pixel_pos] = float4(1.0f, 0.5f, 0.5f, 1.0f);
         return;
     }
 
-	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) >= degrees_20 - 0.01f &&
-		eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= degrees_20 + 0.01f)
+	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) >= degrees_24 - 0.01f &&
+		eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= degrees_24 + 0.01f)
     {
         output_texture[pixel_pos] = float4(0.0f, 1.0f, 0.5f, 1.0f);
         return;
@@ -228,7 +229,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
     {
         output_texture[pixel_pos] = float4(0.0f, 0.0f, 1.0f, 1.0f);
         return;
-    }
+    }*/
 
 	float3 foveated_cached = input_foveated.SampleLevel(point_sampler, uv, 0).rgb;
 

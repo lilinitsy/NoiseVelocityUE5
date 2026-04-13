@@ -23,7 +23,7 @@ enum class EXP1_ALT_STIMULI
 enum class EXP1_ALT_LEFTRIGHT
 {
 	LEFT,
-	RIGHT,
+	//RIGHT,
 	COUNT
 };
 
@@ -184,5 +184,6 @@ public:
 	void set_screen_black(bool black);
 	void apply_material_for_stimuli(EXP1_ALT_STIMULI stimuli);
 
-
+	void move_object_left();
+	void move_object_right();
 };

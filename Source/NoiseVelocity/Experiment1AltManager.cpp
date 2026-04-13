@@ -37,6 +37,10 @@ void AExperiment1AltManager::BeginPlay()
 			InputComponent->BindAction("RecordResponse", IE_Pressed, this, &AExperiment1AltManager::on_response_recorded);
 			InputComponent->BindAction("IncreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_increase_velocity);
 			InputComponent->BindAction("DecreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_decrease_velocity);
+			
+			// Debugging
+			//InputComponent->BindAction("MoveObjectLeft", IE_Pressed, this, &AExperiment1AltManager::move_object_left);
+			//InputComponent->BindAction("MoveObjectRight", IE_Pressed, this, &AExperiment1AltManager::move_object_right
 		}
 	}
 
@@ -132,13 +136,17 @@ void AExperiment1AltManager::start_trial()
 	current_velocity_magnitude = trial.velocity;
 	left_translation_meters_per_second.Z = current_velocity_magnitude;
 	right_translation_meters_per_second.Z = -current_velocity_magnitude; // other way than left
-	apply_material_for_stimuli(trial.stimuli);
-	// Assign new, and relevant, camera properties
-	// Stimuli update?
-	// Also need to get the right actor transforms based on eccentricity
+	
+	
+	// Assign new, and relevant, camera properties, update stimuli
+	render_every_n_frames = trial.render_every_n_fps;
+	user->render_every_n_frames = trial.render_every_n_fps;
 	user->region_mode = (trial.leftright == EXP1_ALT_LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
+	user->frequency_scale = trial.frequency;
 	user->update_view_extension();
+	apply_material_for_stimuli(trial.stimuli);
 
+	// Update relevant experiment parameters
 	experiment_state = EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING;
 
 	UE_LOG(LogTemp, Log, TEXT("Starting trial %d / %d"), current_trial_index, trials.Num());
@@ -278,7 +286,9 @@ void AExperiment1AltManager::initialize_trials()
 
 FVector AExperiment1AltManager::eccentricity_to_world_pos(float eccentricity_deg, EXP1_ALT_LEFTRIGHT side, float z_cm)
 {
-	APlayerCameraManager* camera = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	// THE COMMENTED OUT CODE IS WRONG. USE THE EXPERIMENTAL VALUES BELOW
+
+	/*APlayerCameraManager* camera = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
 	check(camera);
 
 	float actual_fov = camera->GetFOVAngle();
@@ -295,7 +305,33 @@ FVector AExperiment1AltManager::eccentricity_to_world_pos(float eccentricity_deg
 	FVector forward = rot.GetUnitAxis(EAxis::X);
 	FVector right = rot.GetUnitAxis(EAxis::Y);
 
-	return camera->GetCameraLocation() + forward * z_cm + right * (sign * lateral_cm);
+	return camera->GetCameraLocation() + forward * z_cm + right * (sign * lateral_cm);*/
+
+	APlayerCameraManager* camera = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	check(camera);
+	FRotationMatrix rot(camera->GetCameraRotation());
+	FVector forward = rot.GetUnitAxis(EAxis::X);
+	float sign = (side == EXP1_ALT_LEFTRIGHT::LEFT) ? -1.0f : 1.0f;
+
+	FVector position = camera->GetCameraLocation() + forward * z_cm;;
+
+	// Determine values from testing
+	if (eccentricity_deg >= 29.9f) // 30
+	{
+		position.Y = sign * 142.0f; 
+	}
+
+	else if (eccentricity_deg >= 23.9f) // 24
+	{
+		position.Y = sign * 112.0f;
+	}
+
+	else if (eccentricity_deg >= 17.9f) // 18
+	{
+		position.Y = sign * 82.0f;
+	}
+
+	return position;
 }
 
 float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framerate, int every_n_fps, float freq)
@@ -325,6 +361,13 @@ float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framer
 				float randnum = FMath::RandRange(300.0f, 500.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
 			}
+
+			else if (every_n_fps == 4) // intervention is 15fps
+			{
+				float randnum = FMath::RandRange(200.0f, 400.0f);
+				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+			}
+
 		}
 	}
 
@@ -336,7 +379,7 @@ float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framer
 
 void AExperiment1AltManager::apply_material_for_stimuli(EXP1_ALT_STIMULI stimuli)
 {
-	UMaterialInterface* mat = (stimuli == EXP1_ALT_STIMULI::STIMULI0) ? stimuli0_material : stimuli1_material;
+	UMaterialInterface *mat = (stimuli == EXP1_ALT_STIMULI::STIMULI0) ? stimuli0_material : stimuli1_material;
 	if (!mat)
 	{
 		return;
@@ -361,4 +404,22 @@ void AExperiment1AltManager::apply_material_for_stimuli(EXP1_ALT_STIMULI stimuli
 			mesh->SetMaterial(i, mat);
 		}
 	}
+}
+
+
+// Debug positions because the screen-space eccentricity is wrong.
+void AExperiment1AltManager::move_object_left()
+{
+	FVector left_object_position = left_moving_object->GetActorLocation();
+	left_object_position.Y -= 5.0f;
+	left_moving_object->SetActorLocation(left_object_position);
+	UE_LOG(LogTemp, Log, TEXT("Left Y position: %f"), left_object_position.Y);
+}
+
+void AExperiment1AltManager::move_object_right()
+{
+	FVector left_object_position = left_moving_object->GetActorLocation();
+	left_object_position.Y += 5.0f;
+	left_moving_object->SetActorLocation(left_object_position);
+	UE_LOG(LogTemp, Log, TEXT("Left Y position: %f"), left_object_position.Y);
 }

@@ -25,9 +25,9 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 	const FVector2f foveation_center(0.5f, 0.5f); // middle
 	const float radius_fovea = 0.1f;
 	const float radius_periphery = 0.2f;
-	const float screen_width_cm = 120.0f;
-	const float screen_height_cm = 60.0f;
-	const float distance_from_screen_cm = 71.0f;
+	const float screen_width_cm = 60.0f;
+	const float screen_height_cm = 33.0f;
+	const float distance_from_screen_cm = 42.8f;
 	const float s_k = 21.02f;
 	const unsigned int cells = 64;
 	const unsigned int impulses_per_cell = 32;
