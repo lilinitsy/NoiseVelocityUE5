@@ -140,6 +140,18 @@ void AExperiment1AltManager::start_trial()
 	
 	
 	// Assign new, and relevant, camera properties, update stimuli
+	// gabor noise -> comparison_mode = 1
+	// gaussian blur -> comparison_mode = 2
+	if (trial.condition == EXP1_ALT_CONDITION::GABOR_NOISE)
+	{
+		user->comparison_mode = 1;
+	}
+
+	else if (trial.condition == EXP1_ALT_CONDITION::GAUSSIAN_BLUR)
+	{
+		user->comparison_mode = 2;
+	}
+
 	render_every_n_frames = trial.render_every_n_fps;
 	user->render_every_n_frames = trial.render_every_n_fps;
 	user->region_mode = (trial.leftright == EXP1_ALT_LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
@@ -261,14 +273,18 @@ void AExperiment1AltManager::initialize_trials()
 				{
 					for (int rc = 0; rc < 3; rc++)
 					{
-						Exp1AltTrial t;
-						t.stimuli = static_cast<EXP1_ALT_STIMULI>(s);
-						t.leftright = static_cast<EXP1_ALT_LEFTRIGHT>(lr);
-						t.render_every_n_fps = render_every_n_fps_list[rc];
-						t.eccentricity = eccentricities[e];
-						t.frequency = frequencies[f];
-						t.velocity = choose_initial_velocity_for_stimuli(target_framerate, render_every_n_fps_list[rc], frequencies[f]);
-						trials.Add(t);				
+						for (int condition = 0; condition < static_cast<int>(EXP1_ALT_CONDITION::COUNT); condition++)
+						{
+							Exp1AltTrial t;
+							t.stimuli = static_cast<EXP1_ALT_STIMULI>(s);
+							t.condition = static_cast<EXP1_ALT_CONDITION>(condition);
+							t.leftright = static_cast<EXP1_ALT_LEFTRIGHT>(lr);
+							t.render_every_n_fps = render_every_n_fps_list[rc];
+							t.eccentricity = eccentricities[e];
+							t.frequency = frequencies[f];
+							t.velocity = choose_initial_velocity_for_stimuli(target_framerate, render_every_n_fps_list[rc], frequencies[f]);
+							trials.Add(t);
+						}
 					}
 				}
 			}

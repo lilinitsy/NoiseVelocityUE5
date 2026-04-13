@@ -28,10 +28,19 @@ enum class EXP1_ALT_LEFTRIGHT
 };
 
 
+enum class EXP1_ALT_CONDITION
+{
+	GABOR_NOISE,
+	GAUSSIAN_BLUR,
+	COUNT,
+};
+
+
 struct Exp1AltTrial
 {
 	EXP1_ALT_STIMULI stimuli;
 	EXP1_ALT_LEFTRIGHT leftright;
+	EXP1_ALT_CONDITION condition;
 	int render_every_n_fps; // 1 = same, 2, or 3 are options
 	int eccentricity;
 	float frequency;
