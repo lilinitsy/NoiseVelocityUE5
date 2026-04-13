@@ -85,6 +85,7 @@ void AExperiment1AltManager::on_response_recorded()
 	}
 	else if (experiment_state == EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
+		write_trial_to_csv(trials[current_trial_index]);
 		current_trial_index++;
 		UE_LOG(LogTemp, Log, TEXT("Trial complete. (%d remaining)"), trials.Num() - current_trial_index);
 		experiment_state = EXP1_ALT_EXPERIMENT_STATE::BLACK_SCREEN;
@@ -256,7 +257,7 @@ void AExperiment1AltManager::initialize_trials()
 		{
 			for (int e = 0; e < 3; e++)
 			{
-				for (int f = 0; f < 3; f++)
+				for (int f = 0; f < 2; f++)
 				{
 					for (int rc = 0; rc < 3; rc++)
 					{
@@ -346,26 +347,30 @@ float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framer
 		{
 			if (every_n_fps == 1) // intervention is 60fps
 			{
-				float randnum = FMath::RandRange(200.0f, 800.0f);
+				float randnum = FMath::RandRange(2.0f, 6.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+				velocity *= 100.0f; // this order keeps it in units of 50's
 			}
 
 			else if (every_n_fps == 2) // intervention is 30fps
 			{
-				float randnum = FMath::RandRange(400.0f, 800.0f);
+				float randnum = FMath::RandRange(4.0f, 5.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+				velocity *= 100.0f;
 			}
 
 			else if (every_n_fps == 3) // intervention is 20fps
 			{
-				float randnum = FMath::RandRange(300.0f, 500.0f);
+				float randnum = FMath::RandRange(4.0f, 5.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+				velocity *= 100.0f;
 			}
 
 			else if (every_n_fps == 4) // intervention is 15fps
 			{
-				float randnum = FMath::RandRange(200.0f, 400.0f);
+				float randnum = FMath::RandRange(3.0f, 4.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
+				velocity *= 100.0f;
 			}
 
 		}
@@ -422,4 +427,32 @@ void AExperiment1AltManager::move_object_right()
 	left_object_position.Y += 5.0f;
 	left_moving_object->SetActorLocation(left_object_position);
 	UE_LOG(LogTemp, Log, TEXT("Left Y position: %f"), left_object_position.Y);
+}
+
+
+void AExperiment1AltManager::write_trial_to_csv(const Exp1AltTrial& trial)
+{
+	FString csv_path = FPaths::ProjectDir() + TEXT("trial_results.csv");
+
+	bool file_exists = FPlatformFileManager::Get().GetPlatformFile().FileExists(*csv_path);
+
+	FString row = FString::Printf(TEXT("%d,%d,%d,%.3f,%d,%d,%.2f,%.2f\n"),
+		current_trial_index,
+		static_cast<int>(trial.stimuli),
+		trial.eccentricity,
+		trial.frequency,
+		static_cast<int>(trial.leftright),
+		trial.render_every_n_fps,
+		trial.velocity,
+		current_velocity_magnitude);
+
+	if (!file_exists)
+	{
+		FString header = TEXT("index, stimuli, eccentricity, frequency, leftright, render_every_n_fps, initial_velocity, final_velocity\n");
+		FFileHelper::SaveStringToFile(header + row, *csv_path);
+	}
+	else
+	{
+		FFileHelper::SaveStringToFile(row, *csv_path, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
+	}
 }

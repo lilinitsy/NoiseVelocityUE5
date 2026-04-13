@@ -186,4 +186,7 @@ public:
 
 	void move_object_left();
 	void move_object_right();
+
+	void write_trial_to_csv(const Exp1AltTrial& trial);
+
 };
