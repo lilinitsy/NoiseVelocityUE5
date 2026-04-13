@@ -370,14 +370,14 @@ float AExperiment1AltManager::choose_initial_velocity_for_stimuli(int tgt_framer
 
 			else if (every_n_fps == 2) // intervention is 30fps
 			{
-				float randnum = FMath::RandRange(4.0f, 5.0f);
+				float randnum = FMath::RandRange(5.0f, 6.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
 				velocity *= 100.0f;
 			}
 
 			else if (every_n_fps == 3) // intervention is 20fps
 			{
-				float randnum = FMath::RandRange(4.0f, 5.0f);
+				float randnum = FMath::RandRange(5.0f, 6.0f);
 				velocity = FMath::RoundToFloat(randnum * 2.0f) / 2.0f;
 				velocity *= 100.0f;
 			}
