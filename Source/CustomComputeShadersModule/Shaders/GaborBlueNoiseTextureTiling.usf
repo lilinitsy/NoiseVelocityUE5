@@ -81,7 +81,15 @@ float synthesize_gabor_noise(uint2 pixel_pos,
                 continue;
 			}
 
-			float2 bn_uv = frac(float2(candidate) / float(grid_size));
+			int2 tile_id = int2(candidate) / int(grid_size);
+			uint tile_rng = wang_hash(uint(tile_id.x) + uint(tile_id.y) * 3571u);
+			float2 tile_offset = float2(
+				random_float(tile_rng) * float(grid_size),
+				random_float(tile_rng) * float(grid_size)
+			);
+
+			//float2 bn_uv = frac(float2(candidate) / float(grid_size));
+			float2 bn_uv = frac((float2(candidate) + tile_offset) / float(grid_size));
 			float bn_val = bluenoise_tiling_texture.SampleLevel(LinearSampler, bn_uv, 0).r;
 
 			if (bn_val > 0.5)

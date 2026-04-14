@@ -85,23 +85,27 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 	}
 
 	// Eye tracker stuff
-	tobii_api->Update();
-	TobiiGameIntegration::GazePoint gaze_point;
-	if (tobii_api->GetStreamsProvider()->GetLatestGazePoint(gaze_point))
+	if(use_eyetracking)
 	{
-		TobiiGameIntegration::GazePoint normalized_gaze;
-		tobii_api->GetStreamsProvider()->ConvertGazePoint(
-			gaze_point,
-			normalized_gaze,
-			TobiiGameIntegration::UnitType::SignedNormalized,
-			TobiiGameIntegration::UnitType::Normalized);
+		tobii_api->Update();
+		TobiiGameIntegration::GazePoint gaze_point;
+		if (tobii_api->GetStreamsProvider()->GetLatestGazePoint(gaze_point))
+		{
+			TobiiGameIntegration::GazePoint normalized_gaze;
+			tobii_api->GetStreamsProvider()->ConvertGazePoint(
+				gaze_point,
+				normalized_gaze,
+				TobiiGameIntegration::UnitType::SignedNormalized,
+				TobiiGameIntegration::UnitType::Normalized);
 
-		FVector2f gaze_uv = FVector2f(normalized_gaze.X, normalized_gaze.Y);
-		gaze_uv.Y = 1.0f - gaze_uv.Y; // flip y coordinate
-		view_extension->foveation_center = gaze_uv;
-		UE_LOG(LogTemp, Log, TEXT("Gaze uv: %f %f"), gaze_uv.X, gaze_uv.Y);
+			FVector2f gaze_uv = FVector2f(normalized_gaze.X, normalized_gaze.Y);
+			gaze_uv.Y = 1.0f - gaze_uv.Y; // flip y coordinate
+			view_extension->foveation_center = gaze_uv;
+			UE_LOG(LogTemp, Log, TEXT("Gaze uv: %f %f"), gaze_uv.X, gaze_uv.Y);
+		}
+		UE_LOG(LogTemp, Log, TEXT("Gaze pixel: %f %f"), gaze_point.X, gaze_point.Y);
 	}
-	UE_LOG(LogTemp, Log, TEXT("Gaze pixel: %f %f"), gaze_point.X, gaze_point.Y);
+
 
 	// This requires actor to be set to Movable
 	/*FVector location = this->GetActorLocation();
