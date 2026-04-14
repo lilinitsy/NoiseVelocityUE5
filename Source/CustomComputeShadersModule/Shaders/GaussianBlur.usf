@@ -76,7 +76,7 @@ void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
         return;
     }*/
 
-    if (eccentricity(uv, foveation_center, distance_from_screen, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity)
+    if (eccentricity(uv, foveation_center, distance_from_screen, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity + 0.01f)
     {
         output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
         return;

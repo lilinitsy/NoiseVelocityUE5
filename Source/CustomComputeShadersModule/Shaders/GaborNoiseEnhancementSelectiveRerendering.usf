@@ -203,6 +203,8 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float degrees_24 = 24.0f;
 	float degrees_30 = 30.0f;
 
+	
+
 	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity + 0.01f)
     {
         output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
