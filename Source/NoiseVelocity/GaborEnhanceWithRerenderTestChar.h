@@ -8,6 +8,8 @@
 
 #include "GaborEnhancementWithRerenderingViewExtension.h"
 
+// Turn off if no eye tracking available
+#include "tobii_gameintegration.h"
 
 #include "GaborEnhanceWithRerenderTestChar.generated.h"
 
@@ -64,6 +66,7 @@ public:
 	// Whether to take screenshots after motion has started, with spacebar used to start and stop the screenshot process
 	bool take_screenshot = false;
 
+	TobiiGameIntegration::ITobiiGameIntegrationApi *tobii_api = nullptr;
 
 	void toggle_screenshot();
 	void update_view_extension();

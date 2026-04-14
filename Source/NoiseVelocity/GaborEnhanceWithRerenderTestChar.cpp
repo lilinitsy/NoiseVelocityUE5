@@ -22,6 +22,13 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// Eye tracker stuff
+	FVector2D viewport_size;
+	tobii_api = TobiiGameIntegration::GetApi("NoiseVelocity");
+	GEngine->GameViewport->GetViewportSize(viewport_size);
+	tobii_api->GetTrackerController()->TrackRectangle({ 0, 0, (int)viewport_size.X, (int)viewport_size.Y });
+
+
 	const FVector2f foveation_center(0.5f, 0.5f); // middle
 	const float radius_fovea = 0.1f;
 	const float radius_periphery = 0.2f;
@@ -76,6 +83,25 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 
 		UE_LOG(LogTemp, Log, TEXT("Screenshot taken"));
 	}
+
+	// Eye tracker stuff
+	tobii_api->Update();
+	TobiiGameIntegration::GazePoint gaze_point;
+	if (tobii_api->GetStreamsProvider()->GetLatestGazePoint(gaze_point))
+	{
+		TobiiGameIntegration::GazePoint normalized_gaze;
+		tobii_api->GetStreamsProvider()->ConvertGazePoint(
+			gaze_point,
+			normalized_gaze,
+			TobiiGameIntegration::UnitType::SignedNormalized,
+			TobiiGameIntegration::UnitType::Normalized);
+
+		FVector2f gaze_uv = FVector2f(normalized_gaze.X, normalized_gaze.Y);
+		gaze_uv.Y = 1.0f - gaze_uv.Y; // flip y coordinate
+		view_extension->foveation_center = gaze_uv;
+		UE_LOG(LogTemp, Log, TEXT("Gaze uv: %f %f"), gaze_uv.X, gaze_uv.Y);
+	}
+	UE_LOG(LogTemp, Log, TEXT("Gaze pixel: %f %f"), gaze_point.X, gaze_point.Y);
 
 	// This requires actor to be set to Movable
 	/*FVector location = this->GetActorLocation();
