@@ -39,8 +39,8 @@ void AExperiment1AltManager::BeginPlay()
 			InputComponent->BindAction("DecreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_decrease_velocity);
 			
 			// Debugging
-			//InputComponent->BindAction("MoveObjectLeft", IE_Pressed, this, &AExperiment1AltManager::move_object_left);
-			//InputComponent->BindAction("MoveObjectRight", IE_Pressed, this, &AExperiment1AltManager::move_object_right
+			InputComponent->BindAction("MoveObjectLeft", IE_Pressed, this, &AExperiment1AltManager::move_object_left);
+			InputComponent->BindAction("MoveObjectRight", IE_Pressed, this, &AExperiment1AltManager::move_object_right);
 		}
 	}
 
@@ -127,7 +127,7 @@ void AExperiment1AltManager::start_trial()
 	left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
 	left_moving_object->SetActorTransform(left_object_original_transform);
 	right_moving_object->SetActorTransform(right_object_original_transform);
-	float z_distance = FMath::Abs(user->GetActorLocation().Y - left_moving_object->GetActorLocation().Y);
+	float z_distance = FMath::Abs(user->GetActorLocation().X - left_moving_object->GetActorLocation().X);
 
 	FVector left_location = eccentricity_to_world_pos(trial.eccentricity, trial.leftright, z_distance);
 	FVector right_location = left_location;
@@ -201,7 +201,7 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 		if (render_same_fps)
 		{
 			left_moving_object->AddActorLocalRotation(left_delta_rotation);
-			left_moving_object->AddActorLocalOffset(left_delta_translation);
+			left_moving_object->AddActorWorldOffset(left_delta_translation);
 		}
 
 		else
@@ -209,7 +209,7 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 			if (left_framecount % render_every_n_frames == 0)
 			{
 				left_moving_object->AddActorLocalRotation(left_delta_rotation);
-				left_moving_object->AddActorLocalOffset(left_delta_movement);
+				left_moving_object->AddActorWorldOffset(left_delta_movement);
 				left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
 			}
 		}
@@ -237,7 +237,7 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 		FRotator right_delta_rotation = right_rotation_deg_per_second * DeltaTime;
 		FTransform right_delta_transform = FTransform(right_delta_rotation, right_delta_translation, FVector(1.0f, 1.0f, 1.0f));
 		right_moving_object->AddActorLocalRotation(right_delta_rotation);
-		right_moving_object->AddActorLocalOffset(right_delta_translation);
+		right_moving_object->AddActorWorldOffset(right_delta_translation);
 	}
 	else
 	{
@@ -435,6 +435,23 @@ void AExperiment1AltManager::move_object_left()
 	left_object_position.Y -= 5.0f;
 	left_moving_object->SetActorLocation(left_object_position);
 	UE_LOG(LogTemp, Log, TEXT("Left Y position: %f"), left_object_position.Y);
+
+	UStaticMeshComponent* mesh = left_moving_object->FindComponentByClass<UStaticMeshComponent>();
+	if (mesh)
+	{
+		FVector boundsOrigin, boundsExtent;
+		float sphereRadius;
+		UKismetSystemLibrary::GetComponentBounds(mesh, boundsOrigin, boundsExtent, sphereRadius);
+
+		UE_LOG(LogTemp, Log,
+			TEXT("ActorY=%f MeshCompY=%f BoundsOriginY=%f RelY=%f ExtentY=%f"),
+			left_moving_object->GetActorLocation().Y,
+			mesh->GetComponentLocation().Y,
+			boundsOrigin.Y,
+			mesh->GetRelativeLocation().Y,
+			boundsExtent.Y
+		);
+	}
 }
 
 void AExperiment1AltManager::move_object_right()
