@@ -8,8 +8,8 @@
 
 const static int eccentricities[3] = { 18, 24, 30 }; // maybe only do 2?
 const static float frequencies[2] = { 1.0f, 0.75f };
-const static int render_every_n_fps_list[3] = { 1, 2, 3 };
-//const static int render_every_n_fps_list[3] = { 10, 10, 10 };
+//const static int render_every_n_fps_list[3] = { 1, 2, 3 };
+const static int render_every_n_fps_list[3] = { 2, 2, 2};
 const static int num_repetitions = 2; // deprecate
 
 

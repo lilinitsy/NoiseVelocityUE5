@@ -241,7 +241,6 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float4 velocity_encoded = motion_vector_texture.SampleLevel(point_sampler, uv, 0);
 		float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
 		float velocity_magnitude = length(velocity_decoded);
-
 		float noise_value = 0.0;
 		float motion_threshold = 0.001;
 
@@ -251,34 +250,36 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
 			float2 foveation_center_pixels = foveation_center * float2(texture_size);
 
-			// sigma_ecc is in UV space
+			float2 velocity_pixels = velocity_decoded * float2(texture_size);
+			uint2 shifted_pixel_pos = uint2(clamp(float2(pixel_pos) - velocity_pixels, float2(0,0), float2(texture_size - 1)));
+
 			float sigma_ecc = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-			float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12); // sqrt(variance) of uniform distribution
-
+			float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12);
 			float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
-
 			float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
 
 			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
-			float F_L = freq_bounds.x * frequency_scale; // could scale here for lower or higher freq's
-			float F_H = freq_bounds.y * frequency_scale; // could scale here for lower or higher freq's
+			float F_L = freq_bounds.x * frequency_scale;
+			float F_H = freq_bounds.y * frequency_scale;
 
 			float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
 			float l_a = choose_laplacian_level_from_sigma(sigma_eff, 0.25);
 			float amp = amplitude_from_laplacian(uv, input_foveated, linear_sampler, l_a, s_k);
-
 			float w = smoothstep_custom(sigma_eff, 0.5, 2.0);
 			amp *= w;
 
-			// Compute the phase offset with time
 			float base_phase = 2.0f * PI * frac(time_seconds * phase_cycles_per_sec);
-			float phase_offset = base_phase * phase_strength * velocity_magnitude; // scale by motion
+			float phase_offset = base_phase * phase_strength * velocity_magnitude;
 
 			noise_value = synthesize_gabor_noise_sigma_scaled(
-				pixel_pos, texture_size,
-				F_L, F_H,
-				amp, theta,
-				cells, impulses_per_cell,
+				shifted_pixel_pos,
+				texture_size,
+				F_L,
+				F_H,
+				amp,
+				theta,
+				cells,
+				impulses_per_cell,
 				seed,
 				envelope_scale,
 				velocity_decoded,
