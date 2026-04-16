@@ -206,7 +206,10 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 
 		else
 		{
-			if (left_framecount % render_every_n_frames == 0)
+			// THIS WAS THE ISSUE CAUSING MOTION VECTORS NOT TO RENDER
+			// BECAUSE THE CUBE WAS NOT BEING MOVED
+			//if (left_framecount % render_every_n_frames == 0)
+			if (left_framecount % 1 == 0)
 			{
 				left_moving_object->AddActorLocalRotation(left_delta_rotation);
 				left_moving_object->AddActorWorldOffset(left_delta_movement);
