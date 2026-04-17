@@ -206,15 +206,33 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 
 		else
 		{
-			// THIS WAS THE ISSUE CAUSING MOTION VECTORS NOT TO RENDER
-			// BECAUSE THE CUBE WAS NOT BEING MOVED
-			//if (left_framecount % render_every_n_frames == 0)
-			if (left_framecount % 1 == 0)
+			// bullshit block to avoid issues in shader...
+			// mod by 1 for gabor noise so that the motion vectors are still generated,
+			// but the shader reuse keeps non-noise from visibly moving.
+			// Mod by render_every_n_frames for blur so that it doesn't always move smoothly.
+			if (trials[current_trial_index].condition == EXP1_ALT_CONDITION::GABOR_NOISE)
 			{
-				left_moving_object->AddActorLocalRotation(left_delta_rotation);
-				left_moving_object->AddActorWorldOffset(left_delta_movement);
-				left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
+				// THIS WAS THE ISSUE CAUSING MOTION VECTORS NOT TO RENDER
+				// BECAUSE THE CUBE WAS NOT BEING MOVED
+				//if (left_framecount % render_every_n_frames == 0)
+				if (left_framecount % 1 == 0)
+				{
+					left_moving_object->AddActorLocalRotation(left_delta_rotation);
+					left_moving_object->AddActorWorldOffset(left_delta_movement);
+					left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
+				}
 			}
+
+			else
+			{
+				if (left_framecount % render_every_n_frames == 0)
+				{
+					left_moving_object->AddActorLocalRotation(left_delta_rotation);
+					left_moving_object->AddActorWorldOffset(left_delta_movement);
+					left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
+				}
+			}
+
 		}
 
 		left_framecount++;
@@ -472,8 +490,11 @@ void AExperiment1AltManager::write_trial_to_csv(const Exp1AltTrial& trial)
 
 	bool file_exists = FPlatformFileManager::Get().GetPlatformFile().FileExists(*csv_path);
 
-	FString row = FString::Printf(TEXT("%d,%d,%d,%.3f,%d,%d,%.2f,%.2f\n"),
+	FString condition_str = trial.condition == EXP1_ALT_CONDITION::GABOR_NOISE ? "Noise" : "Blur";
+
+	FString row = FString::Printf(TEXT("%d, %s, %d, %d, %.3f, %d, %d, %.2f, %.2f\n"),
 		current_trial_index,
+		*condition_str,
 		static_cast<int>(trial.stimuli),
 		trial.eccentricity,
 		trial.frequency,
@@ -484,7 +505,7 @@ void AExperiment1AltManager::write_trial_to_csv(const Exp1AltTrial& trial)
 
 	if (!file_exists)
 	{
-		FString header = TEXT("index, stimuli, eccentricity, frequency, leftright, render_every_n_fps, initial_velocity, final_velocity\n");
+		FString header = TEXT("index, render_condition, stimuli, eccentricity, frequency, leftright, render_every_n_fps, initial_velocity, final_velocity\n");
 		FFileHelper::SaveStringToFile(header + row, *csv_path);
 	}
 	else

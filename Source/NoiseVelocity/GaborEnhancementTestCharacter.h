@@ -36,4 +36,10 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int use_radially_increasing_blur = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int num_cells = 64;
+
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int impulses_per_cell = 32;
 };

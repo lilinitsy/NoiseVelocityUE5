@@ -25,8 +25,6 @@ void AGaborEnhancementTestCharacter::BeginPlay()
 	const float screen_height_cm = 30.0f;
 	const float distance_from_screen_cm = 71.0f;
 	const float s_k = 21.02f;
-	const unsigned int cells = 64;
-	const unsigned int impulses_per_cell = 32;
 	const unsigned int seed = 10;
 
 	view_extension = FSceneViewExtensions::NewExtension<FGaborEnhancementViewExtension>(
@@ -39,7 +37,7 @@ void AGaborEnhancementTestCharacter::BeginPlay()
 		blur_rate_arcmin_per_degree,
 		use_radially_increasing_blur,
 		s_k,
-		cells,
+		num_cells,
 		impulses_per_cell,
 		seed);
 }
