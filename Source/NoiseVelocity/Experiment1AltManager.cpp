@@ -156,6 +156,7 @@ void AExperiment1AltManager::start_trial()
 	user->render_every_n_frames = trial.render_every_n_fps;
 	user->region_mode = (trial.leftright == EXP1_ALT_LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
 	user->frequency_scale = trial.frequency;
+	user->phase_cycles_per_sec = trial.render_every_n_fps; // this looks more aesthetic and makes sense to cycle noise
 	user->update_view_extension();
 	apply_material_for_stimuli(trial.stimuli);
 
