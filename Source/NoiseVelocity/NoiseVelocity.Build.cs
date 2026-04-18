@@ -9,7 +9,7 @@ public class NoiseVelocity : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "CustomComputeShadersModule" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "UMG", "Slate", "SlateCore", "Engine", "InputCore", "EnhancedInput", "CustomComputeShadersModule" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

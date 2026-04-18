@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
+#include "Blueprint/UserWidget.h"
 
 #include "GaborEnhancementWithRerenderingViewExtension.h"
 
@@ -66,6 +67,12 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	bool use_eyetracking = false;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<UUserWidget> fixation_cross_widget_class;
+
+	UUserWidget *fixation_cross_widget = nullptr;
+
 
 	// Whether to take screenshots after motion has started, with spacebar used to start and stop the screenshot process
 	bool take_screenshot = false;

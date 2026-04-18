@@ -63,7 +63,14 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 		region_mode,
 		comparison_mode);
 
-
+	if (fixation_cross_widget_class)
+	{
+		fixation_cross_widget = CreateWidget<UUserWidget>(GetWorld(), fixation_cross_widget_class);
+		if (fixation_cross_widget)
+		{
+			fixation_cross_widget->AddToViewport(999); // high z-order so it's always on top
+		}
+	}
 }
 
 // Called every frame
