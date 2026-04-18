@@ -71,7 +71,7 @@ public:
 	bool take_screenshot = false;
 
 	TobiiGameIntegration::ITobiiGameIntegrationApi *tobii_api = nullptr;
-
+	FVector2f gaze_pos;
 	void toggle_screenshot();
 	void update_view_extension();
 };

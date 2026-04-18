@@ -264,6 +264,34 @@ void AExperiment1AltManager::Tick(float DeltaTime)
 	{
 		UE_LOG(LogTemp, Log, TEXT("NO ACTOR FOUND"));
 	}
+
+
+	// gaze monitoring
+	if (user->use_eyetracking && experiment_state == EXP1_ALT_EXPERIMENT_STATE::TRIAL_RUNNING)
+	{
+		FVector2f gaze = user->gaze_pos;
+
+		// Convert gaze UV to eccentricity degrees using same math as shader
+		float x_diff = gaze.X - 0.5f;
+		float y_diff = gaze.Y - 0.5f;
+		float x_physical = x_diff * screen_width_cm;
+		float y_physical = y_diff * screen_height_cm;
+		float physical_dist = FMath::Sqrt(x_physical * x_physical + y_physical * y_physical);
+		float gaze_eccentricity = FMath::RadiansToDegrees(FMath::Atan(physical_dist / distance_from_screen_cm));
+
+		if (gaze_eccentricity > max_gaze_eccentricity_deg && !screen_blacked_from_gaze)
+		{
+			screen_blacked_from_gaze = true;
+			set_screen_black(true);
+		}
+		else if (gaze_eccentricity <= max_gaze_eccentricity_deg && screen_blacked_from_gaze)
+		{
+			screen_blacked_from_gaze = false;
+			set_screen_black(false);
+		}
+	}
+
+
 	total_trial_time += DeltaTime;
 }
 

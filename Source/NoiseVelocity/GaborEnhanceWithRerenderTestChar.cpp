@@ -100,7 +100,9 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 
 			FVector2f gaze_uv = FVector2f(normalized_gaze.X, normalized_gaze.Y);
 			gaze_uv.Y = 1.0f - gaze_uv.Y; // flip y coordinate
-			view_extension->foveation_center = gaze_uv;
+			//gaze_pos = FVector2f(gaze_point.X, gaze_point.Y);
+			gaze_pos = gaze_uv;
+			//view_extension->foveation_center = gaze_uv;
 			UE_LOG(LogTemp, Log, TEXT("Gaze uv: %f %f"), gaze_uv.X, gaze_uv.Y);
 		}
 		UE_LOG(LogTemp, Log, TEXT("Gaze pixel: %f %f"), gaze_point.X, gaze_point.Y);

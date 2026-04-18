@@ -95,6 +95,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "User Settings")
 	float radius_periphery = 0.2f; // TODO: Make this use degrees
 
+	UPROPERTY(EditAnywhere, Category = "Gaze Settings")
+	float max_gaze_eccentricity_deg = 10.0f; // how far from center is allowed
+
+	bool screen_blacked_from_gaze = false;
+
+
 	UPROPERTY(EditAnywhere, Category = "Setup Settings")
 	float screen_width_cm = 120.0f;
 	UPROPERTY(EditAnywhere, Category = "Setup Settings")
