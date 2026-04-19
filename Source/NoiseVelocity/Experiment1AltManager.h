@@ -107,6 +107,9 @@ public:
 	float screen_height_cm = 60.0f;
 	UPROPERTY(EditAnywhere, Category = "Setup Settings")
 	float distance_from_screen_cm = 71.0f;
+	
+	UPROPERTY(EditAnywhere, Category = "Setup Settings")
+	bool example_mode = false;
 
 
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
@@ -165,6 +168,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Stimulus Settings")
 	uint32 target_framerate = 60; 
 
+
 	// for tracking whether to move
 	uint32 left_framecount = 0;
 	FVector left_delta_movement = FVector(0.0f, 0.0f, 0.0f);
@@ -183,11 +187,13 @@ public:
 	float current_velocity_magnitude = 0.0f;
 
 
+
 	TArray<Exp1AltTrial> trials;
 
 
 	void set_actor_to_mobile(AActor *actor);	
 
+	void initialize_example_trials();
 	void initialize_trials();
 	void start_trial();
 	void on_response_recorded();

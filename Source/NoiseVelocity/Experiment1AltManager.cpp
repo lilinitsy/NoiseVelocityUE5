@@ -26,7 +26,15 @@ void AExperiment1AltManager::BeginPlay()
 	left_object_original_transform = left_moving_object->GetTransform();
 	right_object_original_transform = right_moving_object->GetTransform();
 
-	initialize_trials();
+	if(example_mode)
+	{
+		initialize_example_trials();
+	}
+
+	else
+	{
+		initialize_trials();
+	}
 
 	APlayerController* pc = GetWorld()->GetFirstPlayerController();
 	if (pc)
@@ -39,8 +47,8 @@ void AExperiment1AltManager::BeginPlay()
 			InputComponent->BindAction("DecreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_decrease_velocity);
 			
 			// Debugging
-			InputComponent->BindAction("MoveObjectLeft", IE_Pressed, this, &AExperiment1AltManager::move_object_left);
-			InputComponent->BindAction("MoveObjectRight", IE_Pressed, this, &AExperiment1AltManager::move_object_right);
+			// InputComponent->BindAction("MoveObjectLeft", IE_Pressed, this, &AExperiment1AltManager::move_object_left);
+			// InputComponent->BindAction("MoveObjectRight", IE_Pressed, this, &AExperiment1AltManager::move_object_right);
 		}
 	}
 
@@ -309,6 +317,28 @@ void AExperiment1AltManager::set_actor_to_mobile(AActor* actor)
 }
 
 
+void AExperiment1AltManager::initialize_example_trials()
+{
+	// fix stimuli, leftright, eccentricity, f, only change render condition
+
+	for (int render_fps_idx = 0; render_fps_idx < 3; render_fps_idx++)
+	{
+		for (int condition = 0; condition < static_cast<int>(EXP1_ALT_CONDITION::COUNT); condition++)
+		{
+			Exp1AltTrial t;
+			t.stimuli            = static_cast<EXP1_ALT_STIMULI>(EXP1_ALT_STIMULI::STIMULI0);
+			t.condition          = static_cast<EXP1_ALT_CONDITION>(condition);
+			t.leftright          = static_cast<EXP1_ALT_LEFTRIGHT>(EXP1_ALT_LEFTRIGHT::LEFT);
+			t.render_every_n_fps = render_every_n_fps_list[render_fps_idx];
+			t.eccentricity       = 27;
+			t.frequency          = 0.75;
+			t.velocity           = 600.0f;
+			trials.Add(t);
+		}
+	}
+}
+
+
 void AExperiment1AltManager::initialize_trials()
 {
 	trials.Empty();
@@ -321,7 +351,7 @@ void AExperiment1AltManager::initialize_trials()
 			{
 				for (int f = 0; f < 2; f++)
 				{
-					for (int rc = 0; rc < 3; rc++)
+					for (int render_fps_idx = 0; render_fps_idx < 3; render_fps_idx++)
 					{
 						for (int condition = 0; condition < static_cast<int>(EXP1_ALT_CONDITION::COUNT); condition++)
 						{
@@ -329,10 +359,10 @@ void AExperiment1AltManager::initialize_trials()
 							t.stimuli = static_cast<EXP1_ALT_STIMULI>(s);
 							t.condition = static_cast<EXP1_ALT_CONDITION>(condition);
 							t.leftright = static_cast<EXP1_ALT_LEFTRIGHT>(lr);
-							t.render_every_n_fps = render_every_n_fps_list[rc];
+							t.render_every_n_fps = render_every_n_fps_list[render_fps_idx];
 							t.eccentricity = eccentricities[e];
 							t.frequency = frequencies[f];
-							t.velocity = choose_initial_velocity_for_stimuli(target_framerate, render_every_n_fps_list[rc], frequencies[f]);
+							t.velocity = choose_initial_velocity_for_stimuli(target_framerate, render_every_n_fps_list[render_fps_idx], frequencies[f]);
 							trials.Add(t);
 						}
 					}

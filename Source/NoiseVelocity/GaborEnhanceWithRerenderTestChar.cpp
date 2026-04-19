@@ -110,9 +110,9 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 			//gaze_pos = FVector2f(gaze_point.X, gaze_point.Y);
 			gaze_pos = gaze_uv;
 			//view_extension->foveation_center = gaze_uv;
-			UE_LOG(LogTemp, Log, TEXT("Gaze uv: %f %f"), gaze_uv.X, gaze_uv.Y);
+			//UE_LOG(LogTemp, Log, TEXT("Gaze uv: %f %f"), gaze_uv.X, gaze_uv.Y);
 		}
-		UE_LOG(LogTemp, Log, TEXT("Gaze pixel: %f %f"), gaze_point.X, gaze_point.Y);
+		//UE_LOG(LogTemp, Log, TEXT("Gaze pixel: %f %f"), gaze_point.X, gaze_point.Y);
 	}
 
 
