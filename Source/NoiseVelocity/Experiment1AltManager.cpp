@@ -321,7 +321,9 @@ void AExperiment1AltManager::initialize_example_trials()
 {
 	// fix stimuli, leftright, eccentricity, f, only change render condition
 
-	for (int render_fps_idx = 0; render_fps_idx < 3; render_fps_idx++)
+	int example_fps_options[2] = {1, 4};
+
+	for (int render_fps_idx = 0; render_fps_idx < 2; render_fps_idx++)
 	{
 		for (int condition = 0; condition < static_cast<int>(EXP1_ALT_CONDITION::COUNT); condition++)
 		{
@@ -329,9 +331,9 @@ void AExperiment1AltManager::initialize_example_trials()
 			t.stimuli            = static_cast<EXP1_ALT_STIMULI>(EXP1_ALT_STIMULI::STIMULI0);
 			t.condition          = static_cast<EXP1_ALT_CONDITION>(condition);
 			t.leftright          = static_cast<EXP1_ALT_LEFTRIGHT>(EXP1_ALT_LEFTRIGHT::LEFT);
-			t.render_every_n_fps = render_every_n_fps_list[render_fps_idx];
+			t.render_every_n_fps = example_fps_options[render_fps_idx];
 			t.eccentricity       = 27;
-			t.frequency          = 0.75;
+			t.frequency          = 0.7;
 			t.velocity           = 600.0f;
 			trials.Add(t);
 		}
