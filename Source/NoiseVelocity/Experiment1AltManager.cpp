@@ -103,16 +103,16 @@ void AExperiment1AltManager::on_response_recorded()
 
 void AExperiment1AltManager::on_increase_velocity()
 {
-	current_velocity_magnitude += 50.0f;
-	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 50.0f, 1200.0f);
+	current_velocity_magnitude += 25.0f;
+	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 25.0f, 1200.0f);
 	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) == 0 ? current_velocity_magnitude : FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
 	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) == 0 ? -current_velocity_magnitude : FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
 }
 
 void AExperiment1AltManager::on_decrease_velocity()
 {
-	current_velocity_magnitude -= 50.0f;
-	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 50.0f, 1200.0f);
+	current_velocity_magnitude -= 25.0f;
+	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, 25.0f, 1200.0f);
 	left_translation_meters_per_second.Z = FMath::Sign(left_translation_meters_per_second.Z) == 0 ? current_velocity_magnitude : FMath::Sign(left_translation_meters_per_second.Z) * current_velocity_magnitude;
 	right_translation_meters_per_second.Z = FMath::Sign(right_translation_meters_per_second.Z) == 0 ? -current_velocity_magnitude : FMath::Sign(right_translation_meters_per_second.Z) * current_velocity_magnitude;
 }
@@ -417,17 +417,17 @@ FVector AExperiment1AltManager::eccentricity_to_world_pos(float eccentricity_deg
 	// Determine values from testing
 	if (eccentricity_deg >= 29.9f) // 30
 	{
-		position.Y = sign * 142.0f; 
+		position.Y = sign * 97.0f; 
 	}
 
 	else if (eccentricity_deg >= 23.9f) // 24
 	{
-		position.Y = sign * 112.0f;
+		position.Y = sign * 77.0f;
 	}
 
 	else if (eccentricity_deg >= 17.9f) // 18
 	{
-		position.Y = sign * 82.0f;
+		position.Y = sign * 57.0f;
 	}
 
 	return position;
