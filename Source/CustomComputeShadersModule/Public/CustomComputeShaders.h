@@ -201,18 +201,12 @@ public:
 BEGIN_SHADER_PARAMETER_STRUCT(FGaborBlueNoiseTextureTilingParameters, )
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, input_foveated)
 	SHADER_PARAMETER_SAMPLER(SamplerState, LinearSampler)
-
-	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, motion_vector_texture)
-	SHADER_PARAMETER_SAMPLER(SamplerState, motion_vector_sampler)
-
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_texture)
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, output_noise_texture)
-
 	SHADER_PARAMETER(FVector2f, foveation_center)
 	SHADER_PARAMETER(float, screen_width_cm)
 	SHADER_PARAMETER(float, screen_height_cm)
 	SHADER_PARAMETER(float, distance_from_screen_cm)
-
 	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
 	SHADER_PARAMETER(unsigned int, use_radially_increasing_blur)
 	SHADER_PARAMETER(float, s_k)
@@ -221,7 +215,10 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaborBlueNoiseTextureTilingParameters, )
 	SHADER_PARAMETER(unsigned int, seed)
 	SHADER_PARAMETER(float, frequency_scale)
 	SHADER_PARAMETER(unsigned int, region_mode)
-	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, bluenoise_tiling_texture)
+	
+	SHADER_PARAMETER_ARRAY(FVector4f, blue_noise_points, [64])
+	SHADER_PARAMETER(uint32, num_blue_noise_points)
+	SHADER_PARAMETER(uint32, grid_size)
 END_SHADER_PARAMETER_STRUCT()
 class FGaborBlueNoiseTextureTilingCS : public FGlobalShader
 {
