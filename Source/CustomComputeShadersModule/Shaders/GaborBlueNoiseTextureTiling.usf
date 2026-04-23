@@ -26,6 +26,29 @@ uint num_blue_noise_points;
 uint grid_size;
 
 
+void debug_impulse_locations(uint2 pixel_pos, uint2 texture_size, float F_L)
+{
+	//float tile_size = min(ceil(3.5 / F_L), float(grid_size));
+	float tile_size = float(grid_size);
+
+	int2 tile_id = int2(pixel_pos) / int(tile_size);
+	float2 tile_origin = float2(tile_id) * tile_size;
+
+	for (uint i = 0; i < num_blue_noise_points; i++)
+	{
+		float2 local_pos = frac(blue_noise_points[i].xy) * tile_size;
+		float2 impulse_pos = tile_origin + local_pos;
+
+		if (length(float2(pixel_pos) - impulse_pos) < 1.5)
+		{
+			output_texture[pixel_pos] = float4(1.0, 0.0, 1.0, 1.0);
+			return;
+		}
+	}
+
+	output_texture[pixel_pos] = float4(0.0, 0.0, 0.0, 1.0);
+}
+
 float gabor_kernel(float2 offset, float freq, float theta)
 {
 	float cos_theta = cos(theta);
@@ -156,6 +179,8 @@ void gabor_blue_noise_texture_tiling_cs(uint3 DispatchThreadId : SV_DispatchThre
 
 		output_texture[pixel_pos] = float4(final_colour, 1.0);
 		output_noise_texture[pixel_pos] = noise;
+
+		// debug_impulse_locations ...
 	}
 
 	else
