@@ -41,7 +41,8 @@ void AGaborBlueNoiseTextureTilingChar::BeginPlay()
 		cells,
 		impulses_per_cell,
 		seed,
-		bluenoise_tiling_texture);
+		bluenoise_tiling_texture,
+		num_blue_noise_points);
 }
 
 // Called every frame

@@ -61,20 +61,22 @@ FGaborBlueNoiseTextureTilingViewExtension::FGaborBlueNoiseTextureTilingViewExten
 	unsigned int cells,
 	unsigned int impulses_per_cell,
 	unsigned int seed,
-	UTexture2D *bluenoise_tiling_texture)
-	: FSceneViewExtensionBase(auto_register)
-	, foveation_center(foveation_center)
-	, radius_fovea(radius_fovea)
-	, radius_periphery(radius_periphery)
-	, screen_width_cm(screen_width_cm)
-	, screen_height_cm(screen_height_cm)
-	, distance_from_screen_cm(distance_from_screen_cm)
-	, blur_rate_arcmin_per_degree(blur_rate_arcmin_per_degree)
-	, use_radially_increasing_blur(use_radially_increasing_blur)
-	, s_k(s_k)
-	, cells(cells)
-	, impulses_per_cell(impulses_per_cell)
-	, seed(seed)
+	UTexture2D *bluenoise_tiling_texture,
+	unsigned int num_blue_noise_points)
+	: FSceneViewExtensionBase(auto_register), 
+	foveation_center(foveation_center),
+	radius_fovea(radius_fovea),
+	radius_periphery(radius_periphery),
+	screen_width_cm(screen_width_cm),
+	screen_height_cm(screen_height_cm),
+	distance_from_screen_cm(distance_from_screen_cm),
+	blur_rate_arcmin_per_degree(blur_rate_arcmin_per_degree),
+	use_radially_increasing_blur(use_radially_increasing_blur),
+	s_k(s_k),
+	cells(cells),
+	impulses_per_cell(impulses_per_cell),
+	seed(seed),
+	num_blue_noise_points(num_blue_noise_points)
 {
 	blue_noise_points = ExtractBlueNoisePoints(bluenoise_tiling_texture);
 	grid_size = bluenoise_tiling_texture->GetSizeX();
@@ -154,12 +156,9 @@ void FGaborBlueNoiseTextureTilingViewExtension::PrePostProcessPass_RenderThread(
 	noise_params->num_blue_noise_points = static_cast<uint32>(blue_noise_points.Num());
 	noise_params->grid_size = grid_size;
 
-	for (int32 i = 0; i < blue_noise_points.Num() && i < 64; i++)
+	for (int32 i = 0; i < blue_noise_points.Num() && i < (int32) FMath::Min((unsigned int) 64, num_blue_noise_points); i++)
 	{
-		noise_params->blue_noise_points[i] = FVector4f(
-			blue_noise_points[i].X / float(grid_size),
-			blue_noise_points[i].Y / float(grid_size),
-			0.0f, 0.0f);
+		noise_params->blue_noise_points[i] = FVector4f(blue_noise_points[i].X / float(grid_size), blue_noise_points[i].Y / float(grid_size), 0.0f, 0.0f);
 	}
 
 	const FIntVector gabor_group_count(FMath::DivideAndRoundUp(desc.Extent.X, 16), FMath::DivideAndRoundUp(desc.Extent.Y, 16), 1);

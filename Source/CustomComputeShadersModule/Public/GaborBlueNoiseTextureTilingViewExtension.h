@@ -20,7 +20,8 @@ class CUSTOMCOMPUTESHADERSMODULE_API FGaborBlueNoiseTextureTilingViewExtension :
 		unsigned int         cells,
 		unsigned int         impulses_per_cell,
 		unsigned int         seed,
-		UTexture2D          *bluenoise_tiling_texture);
+		UTexture2D          *bluenoise_tiling_texture,
+		unsigned int		 num_blue_noise_points);
 
 	virtual void PrePostProcessPass_RenderThread(
 		FRDGBuilder                 &graph_builder,
@@ -54,5 +55,11 @@ class CUSTOMCOMPUTESHADERSMODULE_API FGaborBlueNoiseTextureTilingViewExtension :
 	unsigned int seed;
 
 	TArray<FVector2f> blue_noise_points;
-	uint32            grid_size;
+	unsigned int      grid_size;
+
+	// NOT uploaded to shader from this var
+	// It only gets used in the loop to let me try
+	// larger sizes.
+	// DEFINITELY do not want to make this larger than 64.
+	unsigned int num_blue_noise_points;
 };

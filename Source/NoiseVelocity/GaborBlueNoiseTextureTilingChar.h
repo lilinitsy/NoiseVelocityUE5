@@ -41,4 +41,8 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	UTexture2D *bluenoise_tiling_texture = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	unsigned int num_blue_noise_points = 64;
+
 };
