@@ -53,7 +53,7 @@ float gabor_kernel_sigma_scaled(
 	float freq,
 	float theta,
 	float envelope_scale,
-	float phase_offset,
+	float projected_displacement,
 	float m_rot_x
 )
 {
@@ -65,7 +65,9 @@ float gabor_kernel_sigma_scaled(
 	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
 
 	// Phase shift (motion illusion)
-	float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot_x);
+	//float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot_x);
+	float phase = (2.0 * PI * freq * rotated.x) + (2.0 * PI * freq * m_rot_x * projected_displacement);
+
 	float sinusoid = cos(phase);
 
 	return gaussian * sinusoid;
@@ -96,6 +98,10 @@ float synthesize_gabor_noise_sigma_scaled(
 
 	// Motion directions projected into the Gabor frame (rotated)
 	float m_rot_x = safe_normalize(rotate2d(velocity, theta)).x;
+
+	float2 displacement_pixels = velocity * float2(texture_size);
+	float projected_displacement = dot(displacement_pixels, float2(cos(theta), sin(theta)));
+
 
 
 	for (int dy = -1; dy <= 1; dy++)
@@ -139,6 +145,8 @@ float synthesize_gabor_noise_sigma_scaled(
 
 				float fcpp = exp(log_mean + log_std * random_normal);
 				fcpp = clamp(fcpp, fl, fh);
+				// Have to clamp this to provent motion aliasing and pixelation from improper phase shifts past nyquist
+				projected_displacement = clamp(projected_displacement, -0.5 / max(fcpp, 1e-6), 0.5 / max(fcpp, 1e-6));
 
 				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
 
@@ -146,7 +154,8 @@ float synthesize_gabor_noise_sigma_scaled(
 
 				if (length(offset) <= kernel_radius)
 				{
-					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, phase_offset, m_rot_x);
+					//float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, phase_offset, m_rot_x);
+					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, projected_displacement, m_rot_x);
 					noise += amp * kernel_val;
 				}
 			}
