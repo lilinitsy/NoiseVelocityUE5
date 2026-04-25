@@ -54,11 +54,15 @@ float gabor_kernel_sigma_scaled(
 	float theta,
 	float envelope_scale,
 	float projected_displacement,
-	float m_rot_x
+	float m_rot_x,
+	float velocity_magnitude
 )
 {
 	float2 rotated = rotate2d(offset, theta);
 
+	// This doesn't seem to help much, even if it's interesting.
+	//float stretch = 1.0 + velocity_magnitude;
+	//rotated = stretch_along_dir(rotated, float2(1.0, 0.0), stretch);
 	// Modifying the frequency is messing up the colours
 
 	float sigma = (0.5 / max(freq, 1e-6)) * max(envelope_scale, 1e-6);
@@ -89,7 +93,7 @@ float synthesize_gabor_noise_sigma_scaled(
 )
 {
 	float noise = 0.0;
-
+	float velocity_magnitude = length(velocity);
 	uint cell_h = texture_size.y / num_cells;
 	uint cell_w = texture_size.x / num_cells;
 
@@ -155,7 +159,7 @@ float synthesize_gabor_noise_sigma_scaled(
 				if (length(offset) <= kernel_radius)
 				{
 					//float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, phase_offset, m_rot_x);
-					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, projected_displacement, m_rot_x);
+					float kernel_val = gabor_kernel_sigma_scaled(offset, fcpp, theta, envelope_scale, projected_displacement, m_rot_x, velocity_magnitude);
 					noise += amp * kernel_val;
 				}
 			}
