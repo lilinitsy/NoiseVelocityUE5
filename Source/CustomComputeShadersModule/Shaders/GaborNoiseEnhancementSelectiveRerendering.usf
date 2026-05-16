@@ -149,6 +149,7 @@ float synthesize_gabor_noise_sigma_scaled(
 
 				float fcpp = exp(log_mean + log_std * random_normal);
 				fcpp = clamp(fcpp, fl, fh);
+
 				// Have to clamp this to provent motion aliasing and pixelation from improper phase shifts past nyquist
 				projected_displacement = clamp(projected_displacement, -0.5 / max(fcpp, 1e-6), 0.5 / max(fcpp, 1e-6));
 
@@ -216,7 +217,9 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	float degrees_24 = 24.0f;
 	float degrees_30 = 30.0f;
 
-	
+	float judder_fps = 20.0f;
+	float motion_vector_fps = 60.0f;
+
 
 	if (eccentricity(uv, foveation_center, distance_from_screen_cm, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity + 0.01f)
     {
@@ -256,6 +259,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float velocity_magnitude = length(velocity_decoded);
 		float noise_value = 0.0;
 		float motion_threshold = 0.001;
+		//float motion_threshold = 0.0f;
 
 		if (velocity_magnitude > motion_threshold)
 		{
@@ -271,10 +275,51 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
 			float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
 
-			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
-			float F_L = freq_bounds.x * frequency_scale;
-			float F_H = freq_bounds.y * frequency_scale;
 
+			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
+
+			float F_L_base = freq_bounds.x;
+			float F_H_base = freq_bounds.y;
+
+			float velocity_pixels_magnitude = length(velocity_pixels);
+
+			// Assumes velocity_decoded is displacement per 60Hz display/noise frame.
+			float vtheta = (velocity_pixels_magnitude / ppd) * 60.0;
+
+			// Hardcoded test: use 20fps or 30fps judder condition.
+			float f_center = sqrt(F_L_base * F_H_base);
+
+			float fps_max = 60.0f;
+			float intermediate_frame_count = (fps_max / judder_fps) - 1.0f;
+			intermediate_frame_count = max(intermediate_frame_count, 1.0f);
+
+			float adaptive_frequency_scale = (judder_fps * judder_fps) / (2.0 * vtheta * ppd * f_center * intermediate_frame_count);
+			adaptive_frequency_scale = clamp(adaptive_frequency_scale, 0.1, 1.0);
+
+			float F_L = F_L_base * adaptive_frequency_scale;
+			float F_H = F_H_base * adaptive_frequency_scale;
+
+			/*float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
+
+			float F_L_base = freq_bounds.x;
+			float F_H_base = freq_bounds.y;
+
+			float velocity_pixels_magnitude = length(velocity_pixels);
+
+			// Assumes velocity_decoded is displacement per 60Hz display/noise frame.
+			// If motion vectors are per 30Hz scene frame instead, change 60.0 to 30.0.
+			float vtheta = (velocity_pixels_magnitude / max(ppd, EPSILON)) * 60.0;
+
+			// Hardcoded test: use 30fps judder condition.
+			// For 20fps, change this to 20.0.
+			float f_center = sqrt(max(EPSILON, F_L_base * F_H_base));
+
+			float adaptive_frequency_scale = (judder_fps * judder_fps) / (2.0 * max(vtheta, EPSILON) * max(ppd, EPSILON) * max(f_center, EPSILON));
+
+			adaptive_frequency_scale = clamp(adaptive_frequency_scale, 0.1, 1.0);
+
+			float F_L = F_L_base * adaptive_frequency_scale;
+			float F_H = F_H_base * adaptive_frequency_scale;*/
 			float theta = estimate_orientation(uv, input_foveated, linear_sampler, texel_size);
 			float l_a = choose_laplacian_level_from_sigma(sigma_eff, 0.25);
 			float amp = amplitude_from_laplacian(uv, input_foveated, linear_sampler, l_a, s_k);
@@ -311,6 +356,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float3 final_colour = saturate(foveated_cached * scale);
 
 		output_texture[pixel_pos] = float4(final_colour, 1.0);
+		//output_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
 	}
 
 	// If we're comparing same fps, use the cached image; for comparison_mode 2, 
