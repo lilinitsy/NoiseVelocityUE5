@@ -6,6 +6,10 @@
 
 Texture2D input_foveated;
 SamplerState LinearSampler;
+
+Texture2D motion_vector_texture;
+SamplerState motion_vector_sampler;
+
 RWTexture2D<float4> output_texture;
 RWTexture2D<float4> output_noise_texture;
 
@@ -175,8 +179,22 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float2 foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
 		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
 		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
-		float F_L = freq_bounds.x * frequency_scale;
-		float F_H = freq_bounds.y * frequency_scale;
+
+		// Match the rerender carrier: per-pixel adaptive scale s = R_n / (2 * omega * v_theta * ppd * sqrt(F_L*F_H)).
+		// R_n = motion_vector_fps (noise/display rate); omega hardcoded for now.
+		float motion_vector_fps = 60.0f;
+		float omega = 0.5;
+		float4 velocity_encoded = motion_vector_texture.SampleLevel(motion_vector_sampler, uv, 0);
+		float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
+		float2 velocity_pixels = velocity_decoded * float2(texture_size);
+		float velocity_pixels_magnitude = length(velocity_pixels);
+		float vtheta = (velocity_pixels_magnitude / ppd) * 60.0;
+		float f_center = sqrt(freq_bounds.x * freq_bounds.y);
+		float adaptive_frequency_scale = motion_vector_fps / (2.0 * max(omega, EPSILON) * max(vtheta, EPSILON) * max(ppd, EPSILON) * max(f_center, EPSILON));
+		adaptive_frequency_scale = clamp(adaptive_frequency_scale, 0.1, 1.0);
+
+		float F_L = freq_bounds.x * adaptive_frequency_scale;
+		float F_H = freq_bounds.y * adaptive_frequency_scale;
 		float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
 	
 		// Amplitude from Laplacian (a = 0.25)

@@ -271,9 +271,15 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			uint2 shifted_pixel_pos = uint2(clamp(float2(pixel_pos) - velocity_pixels, float2(0,0), float2(texture_size - 1)));
 
 			float sigma_ecc = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-			float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12);
-			float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
-			float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
+			
+			
+			// With new version focusing on PHASE ONLY,
+			// motion no longer changes the envelope and just affects the scaling. Might want to bring this back though.
+			//float sigma_motion = max(0.0, velocity_magnitude * INV_SQRT_12);
+			//float sigma_eff = sqrt(sigma_ecc * sigma_ecc + sigma_motion * sigma_motion);
+			//float envelope_scale = sigma_eff / max(sigma_ecc, EPSILON);
+			float sigma_eff = sigma_ecc;
+			float envelope_scale = 1.0;
 
 
 			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
@@ -286,14 +292,15 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			// Assumes velocity_decoded is displacement per 60Hz display/noise frame.
 			float vtheta = (velocity_pixels_magnitude / ppd) * 60.0;
 
-			// Hardcoded test: use 20fps or 30fps judder condition.
 			float f_center = sqrt(F_L_base * F_H_base);
 
-			float fps_max = 60.0f;
-			float intermediate_frame_count = (fps_max / judder_fps) - 1.0f;
-			intermediate_frame_count = max(intermediate_frame_count, 1.0f);
-
-			float adaptive_frequency_scale = (judder_fps * judder_fps) / (2.0 * vtheta * ppd * f_center * intermediate_frame_count);
+			// New derivation: s = R_n / (2 * omega * v_theta * ppd * sqrt(F_L*F_H)), R_n = motion_vector_fps. omega hardcoded for now.
+			//float fps_max = 60.0f;
+			//float intermediate_frame_count = (fps_max / judder_fps) - 1.0f;
+			//intermediate_frame_count = max(intermediate_frame_count, 1.0f);
+			//float adaptive_frequency_scale = (judder_fps * judder_fps) / (2.0 * vtheta * ppd * f_center * intermediate_frame_count);
+			float omega = 0.5;
+			float adaptive_frequency_scale = motion_vector_fps / (2.0 * max(omega, EPSILON) * max(vtheta, EPSILON) * max(ppd, EPSILON) * max(f_center, EPSILON));
 			adaptive_frequency_scale = clamp(adaptive_frequency_scale, 0.1, 1.0);
 
 			float F_L = F_L_base * adaptive_frequency_scale;

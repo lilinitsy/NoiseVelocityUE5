@@ -133,6 +133,8 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 		noise_params->input_foveated = blur_output;
 		noise_params->LinearSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+		noise_params->motion_vector_texture = motion_vector_texture;
+		noise_params->motion_vector_sampler = TStaticSamplerState<SF_Point>::GetRHI();
 		noise_params->output_texture = graph_builder.CreateUAV(combined_noise_output);
 		noise_params->output_noise_texture = graph_builder.CreateUAV(noise_output);
 		noise_params->foveation_center = foveation_center;
