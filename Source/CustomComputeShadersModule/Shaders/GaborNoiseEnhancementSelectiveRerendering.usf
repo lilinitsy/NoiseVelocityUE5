@@ -337,7 +337,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			float phase_offset = base_phase * phase_strength * velocity_magnitude;
 
 			noise_value = synthesize_gabor_noise_sigma_scaled(
-				shifted_pixel_pos,
+				pixel_pos,
 				texture_size,
 				F_L,
 				F_H,
