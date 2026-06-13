@@ -67,6 +67,13 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	bool use_eyetracking = false;
+	
+
+	UPROPERTY(EditAnywhere, Category = "Moving Settings")
+	bool use_movement = false;
+
+	UPROPERTY(EditAnywhere, Category = "Moving Settings")
+	float movement_velocity = 500.0f;
 
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UUserWidget> fixation_cross_widget_class;

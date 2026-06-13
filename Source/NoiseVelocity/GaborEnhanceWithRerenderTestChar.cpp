@@ -7,7 +7,7 @@
 // Sets default values
 AGaborEnhanceWithRerenderTestChar::AGaborEnhanceWithRerenderTestChar()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
@@ -21,7 +21,7 @@ AGaborEnhanceWithRerenderTestChar::AGaborEnhanceWithRerenderTestChar()
 void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// Eye tracker stuff
 	FVector2D viewport_size;
 	tobii_api = TobiiGameIntegration::GetApi("NoiseVelocity");
@@ -92,7 +92,7 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 	}
 
 	// Eye tracker stuff
-	if(use_eyetracking)
+	if (use_eyetracking)
 	{
 		tobii_api->Update();
 		TobiiGameIntegration::GazePoint gaze_point;
@@ -117,9 +117,12 @@ void AGaborEnhanceWithRerenderTestChar::Tick(float DeltaTime)
 
 
 	// This requires actor to be set to Movable
-	/*FVector location = this->GetActorLocation();
-	location.X += 1.0f;
-	this->SetActorLocation(location);*/
+	if (use_movement)
+	{
+		FVector location = this->GetActorLocation();
+		location += this->GetActorForwardVector() * DeltaTime * movement_velocity;
+		this->SetActorLocation(location);
+	}
 }
 
 // Called to bind functionality to input
