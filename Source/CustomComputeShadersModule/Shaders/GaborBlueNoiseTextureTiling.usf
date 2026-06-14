@@ -159,8 +159,9 @@ void gabor_blue_noise_texture_tiling_cs(uint3 DispatchThreadId : SV_DispatchThre
 		float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
 		float2 foveation_center_pixels = foveation_center * float2(texture_size);
 		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-	   
-	   float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
+
+	   float ecc_deg = length(float2(pixel_pos) - foveation_center_pixels) / ppd;
+	   float2 freq_bounds = freq_bounds_cpp(sigma_pix, ecc_deg, ppd);
 		float F_L = freq_bounds.x * frequency_scale;
 		float F_H = freq_bounds.y * frequency_scale;
 		

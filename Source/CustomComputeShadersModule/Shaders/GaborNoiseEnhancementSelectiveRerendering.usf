@@ -282,7 +282,8 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			float envelope_scale = 1.0;
 
 
-			float2 freq_bounds = freq_bounds_cpp(sigma_eff, 1.0 / 512.0, 0.5);
+			float ecc_deg = length(float2(pixel_pos) - foveation_center_pixels) / ppd;
+			float2 freq_bounds = freq_bounds_cpp(sigma_eff, ecc_deg, ppd);
 
 			float F_L_base = freq_bounds.x;
 			float F_H_base = freq_bounds.y;

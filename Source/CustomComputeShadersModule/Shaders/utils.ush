@@ -6,6 +6,36 @@
 
 
 
+float2 thibos_thresholds_to_fcpp(float eccentricity_deg, float ppd)
+{
+	const int N = 7;
+	const float ecc[N] = {0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0};
+	const float TL[N] = {60.0, 27.0, 10.5, 8.0, 5.5, 4.8, 4.0}; // cpd
+	const float TH[N] = {60.0, 40.0, 26.0, 24.0, 23.0, 21.0, 20.5}; // cpd
+
+	float e = clamp(eccentricity_deg, ecc[0], ecc[N - 1]);
+
+	float tl = TL[N - 1];
+	float th = TH[N - 1];
+	[unroll]
+	for (int i = 0; i < N - 1; i++)
+	{
+		if (e <= ecc[i + 1])
+		{
+			float t = saturate((e - ecc[i]) / (ecc[i + 1] - ecc[i]));
+			tl = lerp(TL[i], TL[i + 1], t);
+			th = lerp(TH[i], TH[i + 1], t);
+			break;
+		}
+	}
+
+	const float display_nyquist_cpp = 0.5;
+	float inv_ppd = 1.0 / max(ppd, 1e-6);
+	float F_L = min(tl * inv_ppd, display_nyquist_cpp);
+	float F_H = min(th * inv_ppd, display_nyquist_cpp);
+	return float2(F_L, F_H);
+}
+
 
 float2 uv2deg(float2 uv, float2 fixation_uv, float distance_cm, float2 screen_dims_cm)
 {
@@ -63,14 +93,15 @@ float radial_sigma_map(float2 pixel_pos, float2 gaze_pos, float ppd, float blur_
 	return max(EPSILON, sigma_px);
 }
 
-float2 freq_bounds_cpp(float sigma_ecc, float fl_tbl_min, float fh_limit)
+float2 freq_bounds_cpp(float sigma_ecc, float ecc_deg, float ppd)
 {
+	float2 thibos = thibos_thresholds_to_fcpp(ecc_deg, ppd);
 	float sigma_f = 1.0 / (2.0 * PI * max(EPSILON, sigma_ecc));
-	float F_L = 3.0 * sigma_f;
-	float F_H = fh_limit;
-	F_L = clamp(F_L, fl_tbl_min, F_H * 0.999);
-	return float2(F_L, F_H);
-}
+	float blur_cutoff = 3.0 * sigma_f;
+	float F_L = max(thibos.x, blur_cutoff);
+	float F_H = thibos.y;
+	F_L = min(F_L, F_H * 0.999);
+	return float2(F_L, F_H);}
 
 float choose_laplacian_level_from_sigma(float sigma_ecc, float a)
 {

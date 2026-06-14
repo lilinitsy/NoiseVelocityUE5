@@ -178,7 +178,8 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float ppd = pixels_per_degree(texture_size.x, screen_width_cm, distance_from_screen_cm);
 		float2 foveation_center_pixels = foveation_center * float2(texture_size); // convert to pixels for radial_sigma_map
 		float sigma_pix = radial_sigma_map(float2(pixel_pos), foveation_center_pixels, ppd, blur_rate_arcmin_per_degree);
-		float2 freq_bounds = freq_bounds_cpp(sigma_pix, 1.0 / 512.0, 0.5);
+		float ecc_deg = length(float2(pixel_pos) - foveation_center_pixels) / ppd;
+		float2 freq_bounds = freq_bounds_cpp(sigma_pix, ecc_deg, ppd);
 
 		// Match the rerender carrier: per-pixel adaptive scale s = R_n / (2 * omega * v_theta * ppd * sqrt(F_L*F_H)).
 		// R_n = motion_vector_fps (noise/display rate); omega hardcoded for now.
