@@ -29,7 +29,7 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 	tobii_api->GetTrackerController()->TrackRectangle({ 0, 0, (int)viewport_size.X, (int)viewport_size.Y });
 
 
-	const FVector2f foveation_center(0.5f, 0.5f); // middle
+	FVector2f foveation_center = use_cross_display_fixation ? fixation_center : FVector2f(0.5f, 0.5f); // middle
 	const float radius_fovea = 0.1f;
 	const float radius_periphery = 0.2f;
 	const float screen_width_cm = 60.0f;
@@ -130,7 +130,7 @@ void AGaborEnhanceWithRerenderTestChar::SetupPlayerInputComponent(UInputComponen
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("toggle_screenshot", IE_Pressed, this, &AGaborEnhanceWithRerenderTestChar::toggle_screenshot);
+	//PlayerInputComponent->BindAction("toggle_screenshot", IE_Pressed, this, &AGaborEnhanceWithRerenderTestChar::toggle_screenshot);
 
 }
 

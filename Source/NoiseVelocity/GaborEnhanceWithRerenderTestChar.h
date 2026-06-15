@@ -69,6 +69,13 @@ public:
 	bool use_eyetracking = false;
 	
 
+	UPROPERTY(EditAnywhere, Category = "Cross-Display Fixation")
+	bool use_cross_display_fixation = false;
+
+	// Foveation center in stimulus-screen UV; off-screen values (e.g. (-0.5, 0.5)) place the fovea on a coplanar helper display.
+	UPROPERTY(EditAnywhere, Category = "Cross-Display Fixation")
+	FVector2f fixation_center = FVector2f(0.5f, 0.5f);
+
 	UPROPERTY(EditAnywhere, Category = "Moving Settings")
 	bool use_movement = false;
 
