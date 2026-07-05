@@ -139,7 +139,22 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	}
 	
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
+	bool split_horizontally = true; // true: top/bottom, false: left/right
 	float grayed_eccentricity = 10.0f;
+	float gray_bar_half_width_deg = 5.0f;
+	float gray_bar_fade_width_deg = 0.5f;
+	float gray_bar_uv = split_horizontally ? uv.y : uv.x;
+	float gray_bar_screen_dim_cm = split_horizontally ? screen_height_cm : screen_width_cm;
+	float gray_bar_offset_cm = (gray_bar_uv - 0.5f) * gray_bar_screen_dim_cm;
+	float gray_bar_dist_deg = abs(degrees(atan(gray_bar_offset_cm / distance_from_screen_cm)));
+	float gray_bar_noise_mask = smoothstep(gray_bar_half_width_deg, gray_bar_half_width_deg + gray_bar_fade_width_deg, gray_bar_dist_deg);
+
+	if (gray_bar_dist_deg <= gray_bar_half_width_deg)
+	{
+		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f);
+		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+		return;
+	}
 
 	// DO NOT RENDER FOVEA
 	// TODO: add radius_fovea and radius_periphery here and use those instead.
@@ -151,7 +166,6 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
     }
 
 	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
-	bool split_horizontally = true; // true: top/bottom, false: left/right
 	float split_coord = split_horizontally ? uv.y : uv.x;
 	bool first_region = split_coord <= 0.5;
 	bool uv_comparison_check = (region_mode == 0) ||
@@ -193,6 +207,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		amp *= w;
 	
 		float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
+		noise *= gray_bar_noise_mask;
 		
 		// Apply noise to luminance
 		float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;
