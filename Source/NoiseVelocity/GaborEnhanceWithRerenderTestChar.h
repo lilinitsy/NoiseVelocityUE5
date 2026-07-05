@@ -53,7 +53,7 @@ public:
 	float frequency_scale = 1;
 
 	UPROPERTY(EditAnywhere, Category = "Settings")
-	float phase_cycles_per_sec = 2.0f;
+	float phase_cycles_per_sec = 1.0f; // should always remain 1, can modify for testing
 	
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float phase_strength = 1.0f;
@@ -81,6 +81,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Moving Settings")
 	float movement_velocity = 500.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Display Settings")
+	bool split_horizontally = true;
 
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UUserWidget> fixation_cross_widget_class;

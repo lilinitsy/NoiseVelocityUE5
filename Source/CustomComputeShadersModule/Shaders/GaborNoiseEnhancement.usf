@@ -150,28 +150,15 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-	float2 x_extents; // get it in pixel space, then convert to uv
-	if (region_mode == 0) // full scene
-	{
-		x_extents = float2(0, texture_size.x);
-	}
-
-	else if (region_mode == 1) // left
-	{
-		x_extents = float2(0, texture_size.x / 2);
-	}
-
-	else // 2 (or more if somehow above): right
-	{
-		x_extents = float2(texture_size.x / 2, texture_size.x);
-	}
-
-	// x_extents.x: min x; x_extents.y: max x; make sure not to divide by the y of texture_size
-	x_extents /= float2(texture_size.x, texture_size.x); // convert from pixel space to uv
-
 	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
+	bool split_horizontally = true; // true: top/bottom, false: left/right
+	float split_coord = split_horizontally ? uv.y : uv.x;
+	bool first_region = split_coord <= 0.5;
+	bool uv_comparison_check = (region_mode == 0) ||
+							   (region_mode == 1 && first_region) ||
+							   (region_mode == 2 && !first_region);
 
-	if (uv.x >= x_extents.x && uv.x <= x_extents.y)
+	if (uv_comparison_check)
 	{
 		float2 texel_size = 1.0 / float2(texture_size);
 	
@@ -225,5 +212,6 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	else
 	{
 		output_texture[pixel_pos] = float4(foveated, 1.0);
+		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 }

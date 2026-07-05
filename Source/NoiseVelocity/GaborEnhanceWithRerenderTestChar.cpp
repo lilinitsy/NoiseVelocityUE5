@@ -29,7 +29,8 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 	tobii_api->GetTrackerController()->TrackRectangle({ 0, 0, (int)viewport_size.X, (int)viewport_size.Y });
 
 
-	FVector2f foveation_center = use_cross_display_fixation ? fixation_center : FVector2f(0.5f, 0.5f); // middle
+	//FVector2f foveation_center = use_cross_display_fixation ? fixation_center : FVector2f(0.5f, 0.5f); // middle
+	FVector2f foveation_center = fixation_center;
 	const float radius_fovea = 0.1f;
 	const float radius_periphery = 0.2f;
 	const float screen_width_cm = 60.0f;
@@ -48,8 +49,8 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 		foveation_center,
 		radius_fovea,
 		radius_periphery,
-		screen_width_cm,
-		screen_height_cm,
+		!split_horizontally ? screen_width_cm : screen_height_cm, // swap the order if it's for vertical monitor
+		!split_horizontally ? screen_height_cm : screen_width_cm, // swap the order if it's for vertical monitor
 		distance_from_screen_cm,
 		blur_rate_arcmin_per_degree,
 		use_radially_increasing_blur,
