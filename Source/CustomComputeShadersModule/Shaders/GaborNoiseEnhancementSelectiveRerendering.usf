@@ -301,7 +301,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			//float intermediate_frame_count = (fps_max / judder_fps) - 1.0f;
 			//intermediate_frame_count = max(intermediate_frame_count, 1.0f);
 			//float adaptive_frequency_scale = (judder_fps * judder_fps) / (2.0 * vtheta * ppd * f_center * intermediate_frame_count);
-			float omega = 0.5;
+			float omega = 1.0;
 			float adaptive_frequency_scale = motion_vector_fps / (2.0 * max(omega, EPSILON) * max(vtheta, EPSILON) * max(ppd, EPSILON) * max(f_center, EPSILON));
 			adaptive_frequency_scale = clamp(adaptive_frequency_scale, 0.1, 1.0);
 
@@ -351,13 +351,13 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 				envelope_scale,
 				velocity_decoded,
 				phase_offset);
+			noise_value *= gray_bar_noise_mask;
 		}
 		else
 		{
 			noise_value = previous_noise_texture.SampleLevel(point_sampler, uv, 0).r;
 		}
 
-		noise_value *= gray_bar_noise_mask;
 		reprojected_noise_texture[pixel_pos] = float4(noise_value, noise_value, noise_value, 1.0);
 
 		float Y = 0.2126 * foveated_cached.r + 0.7152 * foveated_cached.g + 0.0722 * foveated_cached.b;

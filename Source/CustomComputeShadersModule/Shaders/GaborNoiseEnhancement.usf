@@ -29,7 +29,7 @@ uint region_mode;
 
 
 
-float gabor_kernel(float2 offset, float freq, float theta)
+float gabor_kernel(float2 offset, float freq, float theta, float projected_displacement, float m_rot_x)
 {
 	// Rotate offset by theta
 	float cos_theta = cos(theta);
@@ -44,7 +44,8 @@ float gabor_kernel(float2 offset, float freq, float theta)
 	// Gabor function
 	float sigma = 0.5 / freq;
 	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
-	float sinusoid = cos(2.0 * PI * freq * rotated.x);
+	float phase = (2.0 * PI * freq * rotated.x) + (2.0 * PI * freq * m_rot_x * projected_displacement);
+	float sinusoid = cos(phase);
 	
 	return gaussian * sinusoid;
 }
@@ -59,12 +60,17 @@ float synthesize_gabor_noise(uint2 pixel_pos,
 							float theta, 
 							uint num_cells, 
 							uint num_impulses, 
-							uint rng_seed)
+							uint rng_seed,
+							float2 velocity)
 {
 	float noise = 0.0;
 	
 	uint cell_h = texture_size.y / num_cells;
 	uint cell_w = texture_size.x / num_cells;
+
+	float m_rot_x = safe_normalize(rotate2d(velocity, theta)).x;
+	float2 displacement_pixels = velocity * float2(texture_size);
+	float projected_displacement = dot(displacement_pixels, float2(cos(theta), sin(theta)));
 	
 	// Determine cell of this pixel
 	int cell_y = int(pixel_pos.y) / int(cell_h);
@@ -114,7 +120,8 @@ float synthesize_gabor_noise(uint2 pixel_pos,
 				
 				if (length(offset) <= kernel_radius)
 				{
-					float kernel_val = gabor_kernel(offset, fcpp, theta);
+					float clamped_projected_displacement = clamp(projected_displacement, -0.5 / max(fcpp, 1e-6), 0.5 / max(fcpp, 1e-6));
+					float kernel_val = gabor_kernel(offset, fcpp, theta, clamped_projected_displacement, m_rot_x);
 					noise += amp * kernel_val;
 				}
 			}
@@ -185,7 +192,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		// Match the rerender carrier: per-pixel adaptive scale s = R_n / (2 * omega * v_theta * ppd * sqrt(F_L*F_H)).
 		// R_n = motion_vector_fps (noise/display rate); omega hardcoded for now.
 		float motion_vector_fps = 60.0f;
-		float omega = 0.5;
+		float omega = 1.0f;
 		float4 velocity_encoded = motion_vector_texture.SampleLevel(motion_vector_sampler, uv, 0);
 		float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
 		float2 velocity_pixels = velocity_decoded * float2(texture_size);
@@ -206,7 +213,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
 		amp *= w;
 	
-		float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed);
+		float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed, velocity_decoded);
 		noise *= gray_bar_noise_mask;
 		
 		// Apply noise to luminance
