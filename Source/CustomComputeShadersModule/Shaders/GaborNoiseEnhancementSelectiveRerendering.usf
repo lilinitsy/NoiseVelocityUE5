@@ -33,6 +33,14 @@ uint region_mode; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
 // the appropriate half of Texture2D most_recently_rendered_image)
 uint comparison_mode; 
 
+static const float gabor_a = 0.08f;
+static const float gabor_support_threshold = 0.01f;
+
+float gabor_kernel_radius(float envelope_scale)
+{
+	return (sqrt(-log(gabor_support_threshold) / PI) / gabor_a) * max(envelope_scale, 1.0f);
+}
+
 
 float2 stretch_along_dir(float2 v, float2 dir_unit, float stretch)
 {
@@ -65,8 +73,8 @@ float gabor_kernel_sigma_scaled(
 	//rotated = stretch_along_dir(rotated, float2(1.0, 0.0), stretch);
 	// Modifying the frequency is messing up the colours
 
-	float sigma = (0.5 / max(freq, 1e-6)) * max(envelope_scale, 1e-6);
-	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
+	float scaled_a = gabor_a / max(envelope_scale, 1e-6);
+	float gaussian = exp(-PI * scaled_a * scaled_a * dot(rotated, rotated));
 
 	// Phase shift (motion illusion)
 	//float phase = (2.0 * PI * freq * rotated.x) + (phase_offset * m_rot_x);
@@ -155,7 +163,7 @@ float synthesize_gabor_noise_sigma_scaled(
 
 				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
 
-				float kernel_radius = (3.5 / max(fcpp, 1e-6)) * max(envelope_scale, 1.0);
+				float kernel_radius = gabor_kernel_radius(envelope_scale);
 
 				if (length(offset) <= kernel_radius)
 				{

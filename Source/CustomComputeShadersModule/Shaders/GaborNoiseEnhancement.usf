@@ -27,6 +27,14 @@ float frequency_scale;
 
 uint region_mode;
 
+static const float gabor_a = 0.08f;
+static const float gabor_support_threshold = 0.01f;
+
+float gabor_kernel_radius()
+{
+	return sqrt(-log(gabor_support_threshold) / PI) / gabor_a;
+}
+
 
 
 float gabor_kernel(float2 offset, float freq, float theta, float projected_displacement, float m_rot_x)
@@ -42,8 +50,7 @@ float gabor_kernel(float2 offset, float freq, float theta, float projected_displ
 	// Modifying the frequency is messing up the colours
 
 	// Gabor function
-	float sigma = 0.5 / freq;
-	float gaussian = exp(-dot(rotated, rotated) / (2.0 * sigma * sigma));
+	float gaussian = exp(-PI * gabor_a * gabor_a * dot(rotated, rotated));
 	float phase = (2.0 * PI * freq * rotated.x) + (2.0 * PI * freq * m_rot_x * projected_displacement);
 	float sinusoid = cos(phase);
 	
@@ -116,7 +123,7 @@ float synthesize_gabor_noise(uint2 pixel_pos,
 				float2 offset = float2(pixel_pos) - float2(impulse_x, impulse_y);
 				
 				// Kernel size
-				float kernel_radius = 3.5 / fcpp;
+				float kernel_radius = gabor_kernel_radius();
 				
 				if (length(offset) <= kernel_radius)
 				{
