@@ -23,18 +23,9 @@ void AExperiment2Manager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	initialize_trials();
-
 	if (user)
 	{
 		user_original_transform = user->GetActorTransform();
-		user->use_movement = false;
-		user->movement_velocity = 0.0f;
-		user->fixation_center = fixation_uv;
-		user->split_horizontally = false;
-		user->region_mode = 0;
-		user->update_view_extension();
-		update_fixation_cross(fixation_uv);
 	}
 
 	APlayerController* pc = GetWorld()->GetFirstPlayerController();
@@ -49,6 +40,25 @@ void AExperiment2Manager::BeginPlay()
 		}
 	}
 
+	if (experimentally_determine_foveation_level)
+	{
+		configure_foveation_test_mode();
+		return;
+	}
+
+	initialize_trials();
+
+	if (user)
+	{
+		user->use_movement = false;
+		user->movement_velocity = 0.0f;
+		user->fixation_center = fixation_uv;
+		user->split_horizontally = false;
+		user->region_mode = 0;
+		user->update_view_extension();
+		update_fixation_cross(fixation_uv);
+	}
+
 	UE_LOG(LogTemp, Log, TEXT("Experiment 2 ready. Press spacebar to start trial 1 of %d."), trials.Num());
 }
 
@@ -56,7 +66,7 @@ void AExperiment2Manager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!user || experiment_state != EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
+	if (!user || experimentally_determine_foveation_level || experiment_state != EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
 		return;
 	}
@@ -114,6 +124,12 @@ void AExperiment2Manager::initialize_trials()
 
 void AExperiment2Manager::on_response_recorded()
 {
+	if (experimentally_determine_foveation_level)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Foveation test active. Up/Down adjusts blur_rate_arcmin_per_degree; current value %.3f."), foveation_test_blur_rate);
+		return;
+	}
+
 	if (!user)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Experiment 2 has no user assigned."));
@@ -238,6 +254,12 @@ void AExperiment2Manager::apply_foveation_level(EXP2_FOVEATION_LEVEL foveation_l
 
 void AExperiment2Manager::on_increase_velocity()
 {
+	if (experimentally_determine_foveation_level)
+	{
+		adjust_foveation_test_blur(foveation_test_blur_step);
+		return;
+	}
+
 	current_velocity_magnitude += velocity_step;
 	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, min_velocity, max_velocity);
 
@@ -249,6 +271,12 @@ void AExperiment2Manager::on_increase_velocity()
 
 void AExperiment2Manager::on_decrease_velocity()
 {
+	if (experimentally_determine_foveation_level)
+	{
+		adjust_foveation_test_blur(-foveation_test_blur_step);
+		return;
+	}
+
 	current_velocity_magnitude -= velocity_decrement();
 	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, min_velocity, max_velocity);
 
@@ -325,6 +353,59 @@ void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 	{
 		FFileHelper::SaveStringToFile(row, *csv_path, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
 	}
+}
+
+void AExperiment2Manager::configure_foveation_test_mode()
+{
+	if (!user)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Foveation test mode requires a user assigned."));
+		return;
+	}
+
+	trials.Empty();
+	experiment_state = EXP2_EXPERIMENT_STATE::WAITING_FOR_INPUT;
+	current_velocity_magnitude = 0.0f;
+	foveation_test_blur_rate = FMath::Clamp(foveation_test_blur_rate, foveation_test_min_blur, foveation_test_max_blur);
+
+	user->use_movement = false;
+	user->movement_velocity = 0.0f;
+	user->fixation_center = FVector2f(0.5f, 0.5f);
+	user->split_horizontally = false;
+	user->region_mode = 0;
+	user->render_every_n_frames = 1;
+	user->comparison_mode = static_cast<uint32>(experiment2ComparisonMode::blur_hold);
+	user->use_radially_increasing_blur = 0;
+
+	apply_foveation_test_blur();
+	update_fixation_cross(user->fixation_center);
+
+	UE_LOG(LogTemp, Log, TEXT("Foveation test mode active. Up/Down adjusts blur_rate_arcmin_per_degree by %.3f."), foveation_test_blur_step);
+}
+
+void AExperiment2Manager::apply_foveation_test_blur()
+{
+	if (!user)
+	{
+		return;
+	}
+
+	user->blur_rate_arcmin_per_degree = foveation_test_blur_rate;
+
+	if (user->view_extension)
+	{
+		user->view_extension->reset_cache_requested = true;
+	}
+
+	user->update_view_extension();
+
+	UE_LOG(LogTemp, Log, TEXT("Foveation test blur_rate_arcmin_per_degree = %.3f"), foveation_test_blur_rate);
+}
+
+void AExperiment2Manager::adjust_foveation_test_blur(float delta)
+{
+	foveation_test_blur_rate = FMath::Clamp(foveation_test_blur_rate + delta, foveation_test_min_blur, foveation_test_max_blur);
+	apply_foveation_test_blur();
 }
 
 FVector2f AExperiment2Manager::max_eccentricity_to_fixation_uv(float max_eccentricity_deg) const

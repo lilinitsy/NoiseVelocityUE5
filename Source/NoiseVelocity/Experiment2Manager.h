@@ -87,6 +87,21 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	bool use_custom_reset_transform = false;
 
+	UPROPERTY(EditAnywhere, Category = "Foveation Test")
+	bool experimentally_determine_foveation_level = false;
+
+	UPROPERTY(EditAnywhere, Category = "Foveation Test")
+	float foveation_test_blur_rate = 0.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Foveation Test")
+	float foveation_test_blur_step = 0.01f;
+
+	UPROPERTY(EditAnywhere, Category = "Foveation Test")
+	float foveation_test_min_blur = 0.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Foveation Test")
+	float foveation_test_max_blur = 0.5f;
+
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	FVector reset_location = FVector(0.0f, 0.0f, 0.0f);
 
@@ -121,6 +136,9 @@ public:
 	void set_screen_black(bool black);
 	void reset_user_position();
 	void write_trial_to_csv(const Exp2Trial& trial);
+	void configure_foveation_test_mode();
+	void apply_foveation_test_blur();
+	void adjust_foveation_test_blur(float delta);
 
 	FVector2f max_eccentricity_to_fixation_uv(float max_eccentricity_deg) const;
 	void update_fixation_cross(FVector2f trial_fixation_uv);

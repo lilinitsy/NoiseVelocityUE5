@@ -2,7 +2,7 @@
 
 
 #include "GaborEnhanceWithRerenderTestChar.h"
-
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 AGaborEnhanceWithRerenderTestChar::AGaborEnhanceWithRerenderTestChar()
@@ -14,6 +14,8 @@ AGaborEnhanceWithRerenderTestChar::AGaborEnhanceWithRerenderTestChar()
 	CameraComponent->SetupAttachment(RootComponent);
 	CameraComponent->SetRelativeLocation(FVector(0.f, 0.f, 0.f));
 	CameraComponent->bUsePawnControlRotation = false;
+
+	GetCharacterMovement()->GravityScale = 0.0f;
 
 }
 
@@ -72,6 +74,9 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 			fixation_cross_widget->AddToViewport(999); // high z-order so it's always on top
 		}
 	}
+
+	GetCharacterMovement()->GravityScale = 0.0f;
+
 }
 
 // Called every frame
