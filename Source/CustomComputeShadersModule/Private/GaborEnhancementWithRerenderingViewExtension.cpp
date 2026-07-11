@@ -4,6 +4,14 @@
 #include "PostProcess/PostProcessing.h"
 #include "RenderGraphUtils.h"
 
+enum class gaborComparisonMode : unsigned int
+{
+	noise = 1,
+	blur_existing = 2,
+	raw_hold = 3,
+	blur_hold = 4
+};
+
 FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingViewExtension(
 	const FAutoRegister& auto_register,
 	unsigned int render_every_n_frames,
@@ -60,6 +68,14 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 	const FSceneView& view,
 	const FPostProcessingInputs& inputs)
 {
+	if (reset_cache_requested)
+	{
+		cached_base_image.SafeRelease();
+		cached_noise_texture.SafeRelease();
+		frame_counter = 0;
+		reset_cache_requested = false;
+	}
+
 	bool should_render_full_frame = (frame_counter % render_every_n_frames == 0);
 	frame_counter++;
 	dynamic_seed++;
@@ -90,8 +106,8 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		blur_params->screen_width_cm = screen_width_cm;
 		blur_params->screen_height_cm = screen_height_cm;
 		blur_params->distance_from_screen = distance_from_screen_cm;
-		blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
-		blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
+		blur_params->blur_rate_arcmin_per_degree = comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ? 0.0f : blur_rate_arcmin_per_degree;
+		blur_params->use_radially_increasing_blur = comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ? 0 : use_radially_increasing_blur;
 
 		const FIntVector blur_group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),
@@ -115,7 +131,9 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		graph_builder.QueueTextureExtraction(blur_output, &cached_base_image, ERDGResourceExtractionFlags::None);
 
 		// Blur only - skip all noise
-		if (comparison_mode == 2)
+		if (comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ||
+			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_existing) ||
+			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold))
 		{
 			AddCopyTexturePass(graph_builder, blur_output, scene_colour);
 			return;
@@ -173,7 +191,14 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 
 	// Do on the other frames that don't % == 0
-	else if (cached_base_image && (cached_noise_texture || comparison_mode == 2))
+	else if (cached_base_image &&
+		(comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ||
+		 comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold)))
+	{
+		FRDGTextureRef cached_base = graph_builder.RegisterExternalTexture(cached_base_image, TEXT("cached_base_image"));
+		AddCopyTexturePass(graph_builder, cached_base, scene_colour);
+	}
+	else if (cached_base_image && (cached_noise_texture || comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_existing)))
 	{
 		//UE_LOG(LogTemp, Log, TEXT("Noise frames"));
 		FGaborNoiseEnhancementWithRerenderingCS::FParameters* noise_params = graph_builder.AllocParameters<FGaborNoiseEnhancementWithRerenderingCS::FParameters>();
@@ -192,7 +217,8 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		// and use the new one to update to the other side.
 		// Note: Comparison mode = 2 does not use the noise. Just the easiest thing to do for
 		// implementation is to have it be handled in the shader.
-		if (comparison_mode == 1 || comparison_mode == 2)
+		if (comparison_mode == static_cast<unsigned int>(gaborComparisonMode::noise) ||
+			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_existing))
 		{
 			FRDGTextureRef blur_output = graph_builder.CreateTexture(desc, TEXT("gaussian_blur_output"));
 

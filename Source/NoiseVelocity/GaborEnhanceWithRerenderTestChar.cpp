@@ -64,7 +64,7 @@ void AGaborEnhanceWithRerenderTestChar::BeginPlay()
 		region_mode,
 		comparison_mode);
 
-	if (fixation_cross_widget_class)
+	if (fixation_cross_widget_class && !fixation_cross_widget)
 	{
 		fixation_cross_widget = CreateWidget<UUserWidget>(GetWorld(), fixation_cross_widget_class);
 		if (fixation_cross_widget)
@@ -144,6 +144,17 @@ void AGaborEnhanceWithRerenderTestChar::toggle_screenshot()
 
 void AGaborEnhanceWithRerenderTestChar::update_view_extension()
 {
+	if (!view_extension)
+	{
+		return;
+	}
+
+	const float screen_width_cm = 60.0f;
+	const float screen_height_cm = 33.0f;
+
+	view_extension->foveation_center = fixation_center;
+	view_extension->screen_width_cm = !split_horizontally ? screen_width_cm : screen_height_cm;
+	view_extension->screen_height_cm = !split_horizontally ? screen_height_cm : screen_width_cm;
 	view_extension->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
 	view_extension->use_radially_increasing_blur = use_radially_increasing_blur;
 	view_extension->render_every_n_frames = render_every_n_frames;

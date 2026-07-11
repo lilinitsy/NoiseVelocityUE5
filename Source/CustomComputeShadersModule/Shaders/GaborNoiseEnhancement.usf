@@ -146,17 +146,31 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	}
 	
 	float2 uv = (float2(pixel_pos) + 0.5) / float2(texture_size);
-	bool split_horizontally = true; // true: top/bottom, false: left/right
+	bool split_horizontally = region_mode != 0; // true: top/bottom, false: fullscreen
+	bool mirror_bottom_to_top = split_horizontally && uv.y < 0.5f;
+	float2 source_uv = mirror_bottom_to_top ? float2(uv.x, 1.0f - uv.y) : uv;
 	float grayed_eccentricity = 10.0f;
 	float gray_bar_half_width_deg = 5.0f;
 	float gray_bar_fade_width_deg = 0.5f;
+	float gray_edge_fade_width_deg = 0.75f;
 	float gray_bar_uv = split_horizontally ? uv.y : uv.x;
 	float gray_bar_screen_dim_cm = split_horizontally ? screen_height_cm : screen_width_cm;
 	float gray_bar_offset_cm = (gray_bar_uv - 0.5f) * gray_bar_screen_dim_cm;
 	float gray_bar_dist_deg = abs(degrees(atan(gray_bar_offset_cm / distance_from_screen_cm)));
-	float gray_bar_noise_mask = smoothstep(gray_bar_half_width_deg, gray_bar_half_width_deg + gray_bar_fade_width_deg, gray_bar_dist_deg);
+	float gray_bar_noise_mask = split_horizontally ? smoothstep(gray_bar_half_width_deg, gray_bar_half_width_deg + gray_bar_fade_width_deg, gray_bar_dist_deg) : 1.0f;
 
-	if (gray_bar_dist_deg <= gray_bar_half_width_deg)
+	float x_offset_cm = (uv.x - foveation_center.x) * screen_width_cm;
+	float x_eccentricity_deg = degrees(atan(x_offset_cm / distance_from_screen_cm));
+	float fixation_bar_noise_mask = smoothstep(grayed_eccentricity, grayed_eccentricity + gray_edge_fade_width_deg, x_eccentricity_deg);
+
+	if (x_eccentricity_deg < grayed_eccentricity)
+	{
+		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f);
+		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+		return;
+	}
+
+	if (split_horizontally && gray_bar_dist_deg <= gray_bar_half_width_deg)
 	{
 		output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f);
 		output_noise_texture[pixel_pos] = float4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -172,7 +186,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-	float3 foveated = input_foveated.SampleLevel(LinearSampler, uv, 0).rgb;
+	float3 foveated = input_foveated.SampleLevel(LinearSampler, source_uv, 0).rgb;
 	float split_coord = split_horizontally ? uv.y : uv.x;
 	bool first_region = split_coord <= 0.5;
 	bool uv_comparison_check = (region_mode == 0) ||
@@ -193,8 +207,12 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 		// R_n = motion_vector_fps (noise/display rate); omega hardcoded for now.
 		float motion_vector_fps = 60.0f;
 		float omega = 1.0f;
-		float4 velocity_encoded = motion_vector_texture.SampleLevel(motion_vector_sampler, uv, 0);
+		float4 velocity_encoded = motion_vector_texture.SampleLevel(motion_vector_sampler, source_uv, 0);
 		float2 velocity_decoded = DecodeVelocityFromTexture(velocity_encoded);
+		if (mirror_bottom_to_top)
+		{
+			velocity_decoded.y = -velocity_decoded.y;
+		}
 		float2 velocity_pixels = velocity_decoded * float2(texture_size);
 		float velocity_pixels_magnitude = length(velocity_pixels);
 		float vtheta = (velocity_pixels_magnitude / ppd) * 60.0;
@@ -204,17 +222,17 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 
 		float F_L = freq_bounds.x * adaptive_frequency_scale;
 		float F_H = freq_bounds.y * adaptive_frequency_scale;
-		float theta = estimate_orientation(uv, input_foveated, LinearSampler, texel_size);
+		float theta = estimate_orientation(source_uv, input_foveated, LinearSampler, texel_size);
 	
 		// Amplitude from Laplacian (a = 0.25)
 		float l_a = choose_laplacian_level_from_sigma(sigma_pix, 0.25);
-		float amp = amplitude_from_laplacian(uv, input_foveated, LinearSampler, l_a, s_k);
+		float amp = amplitude_from_laplacian(source_uv, input_foveated, LinearSampler, l_a, s_k);
 	
 		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
 		amp *= w;
 	
 		float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed, velocity_decoded);
-		noise *= gray_bar_noise_mask;
+		noise *= gray_bar_noise_mask * fixation_bar_noise_mask;
 		
 		// Apply noise to luminance
 		float Y = 0.2126 * foveated.r + 0.7152 * foveated.g + 0.0722 * foveated.b;

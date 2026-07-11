@@ -37,6 +37,7 @@ public:
 	TRefCountPtr<IPooledRenderTarget> cached_base_image;
 	TRefCountPtr<IPooledRenderTarget> cached_noise_texture;
 	uint32 frame_counter = 0;
+	bool reset_cache_requested = false;
 	float running_time = 0.0f;
 	uint32 render_every_n_frames;
 
