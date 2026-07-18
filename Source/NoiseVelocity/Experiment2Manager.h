@@ -27,17 +27,21 @@ enum class EXP2_EXPERIMENT_STATE
 {
 	WAITING_FOR_INPUT,
 	BLACK_SCREEN,
-	TRIAL_RUNNING
+	TRIAL_RUNNING,
+	RATING_NOISE_VISIBILITY,
+	RATING_RECORDED
 };
 
 struct Exp2Trial
 {
+	int phase;
 	int fps;
 	float max_eccentricity_deg;
 	FVector2f fixation_uv;
 	EXP2_FOVEATION_LEVEL foveation_level;
 	EXP2_METHOD method;
 	float initial_velocity;
+	int saved_velocity_index;
 };
 
 UCLASS()
@@ -70,6 +74,9 @@ public:
 	float screen_width_cm = 60.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
+	float screen_height_cm = 33.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	float distance_from_screen_cm = 60.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
@@ -83,6 +90,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	float max_velocity = 1200.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Experiment 2")
+	float max_rating_gaze_error_deg = 2.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	bool use_custom_reset_transform = false;
@@ -122,11 +132,17 @@ public:
 
 	uint32 current_trial_index = 0;
 	float current_velocity_magnitude = 0.0f;
+	uint32 current_noise_visibility_rating = 0;
 	EXP2_EXPERIMENT_STATE experiment_state = EXP2_EXPERIMENT_STATE::WAITING_FOR_INPUT;
+	int current_phase = 1;
 	FTransform user_original_transform;
 	TArray<Exp2Trial> trials;
+	TArray<float> saved_blur_velocities;
+	bool noise_phase_initialized = false;
 
 	void initialize_trials();
+	void initialize_calibration_trials();
+	void initialize_noise_trials();
 	void start_trial();
 	void apply_trial(const Exp2Trial& trial);
 	void apply_foveation_level(EXP2_FOVEATION_LEVEL foveation_level);
@@ -136,6 +152,8 @@ public:
 	void set_screen_black(bool black);
 	void reset_user_position();
 	void write_trial_to_csv(const Exp2Trial& trial);
+	void record_noise_visibility_rating();
+	bool can_accept_noise_visibility_rating() const;
 	void configure_foveation_test_mode();
 	void apply_foveation_test_blur();
 	void adjust_foveation_test_blur(float delta);

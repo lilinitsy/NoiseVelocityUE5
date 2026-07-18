@@ -3,6 +3,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Camera/PlayerCameraManager.h"
 #include "HAL/PlatformFileManager.h"
+#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -37,6 +38,13 @@ void AExperiment2Manager::BeginPlay()
 			InputComponent->BindAction("RecordResponse", IE_Pressed, this, &AExperiment2Manager::on_response_recorded);
 			InputComponent->BindAction("IncreaseVelocity", IE_Pressed, this, &AExperiment2Manager::on_increase_velocity);
 			InputComponent->BindAction("DecreaseVelocity", IE_Pressed, this, &AExperiment2Manager::on_decrease_velocity);
+			InputComponent->BindAction("Rating1", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
+			InputComponent->BindAction("Rating2", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
+			InputComponent->BindAction("Rating3", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
+			InputComponent->BindAction("Rating4", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
+			InputComponent->BindAction("Rating5", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
+			InputComponent->BindAction("Rating6", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
+			InputComponent->BindAction("Rating7", IE_Pressed, this, &AExperiment2Manager::record_noise_visibility_rating);
 		}
 	}
 
@@ -77,42 +85,89 @@ void AExperiment2Manager::Tick(float DeltaTime)
 
 void AExperiment2Manager::initialize_trials()
 {
-	trials.Empty();
+	initialize_calibration_trials();
+}
 
-	const int fps_options[] = {10, 20, 30, 60};
+void AExperiment2Manager::initialize_calibration_trials()
+{
+	trials.Empty();
+	saved_blur_velocities.Empty();
+	noise_phase_initialized = false;
+	current_phase = 1;
+
+	const int fps_options[] = {10, 20, 30};
 	const float max_eccentricity_options[] = {28.0f, 35.0f, 42.0f};
 
 	for (int rep = 0; rep < num_repetitions; rep++)
 	{
 		for (int eccentricity_idx = 0; eccentricity_idx < 3; eccentricity_idx++)
 		{
-			for (int fps_idx = 0; fps_idx < 4; fps_idx++)
+			for (int fps_idx = 0; fps_idx < 3; fps_idx++)
 			{
 				Exp2Trial no_foveation_trial;
+				no_foveation_trial.phase = 1;
 				no_foveation_trial.fps = fps_options[fps_idx];
 				no_foveation_trial.max_eccentricity_deg = max_eccentricity_options[eccentricity_idx];
 				no_foveation_trial.fixation_uv = max_eccentricity_to_fixation_uv(no_foveation_trial.max_eccentricity_deg);
 				no_foveation_trial.foveation_level = EXP2_FOVEATION_LEVEL::LOW;
 				no_foveation_trial.method = EXP2_METHOD::NO_FOVEATION;
 				no_foveation_trial.initial_velocity = initial_velocity;
+				no_foveation_trial.saved_velocity_index = -1;
 				trials.Add(no_foveation_trial);
 
 				for (int foveation_idx = 0; foveation_idx < static_cast<int>(EXP2_FOVEATION_LEVEL::COUNT); foveation_idx++)
 				{
-					for (int method_idx = static_cast<int>(EXP2_METHOD::GAUSSIAN_BLUR); method_idx < static_cast<int>(EXP2_METHOD::COUNT); method_idx++)
-					{
-						Exp2Trial trial;
-						trial.fps = fps_options[fps_idx];
-						trial.max_eccentricity_deg = max_eccentricity_options[eccentricity_idx];
-						trial.fixation_uv = max_eccentricity_to_fixation_uv(trial.max_eccentricity_deg);
-						trial.foveation_level = static_cast<EXP2_FOVEATION_LEVEL>(foveation_idx);
-						trial.method = static_cast<EXP2_METHOD>(method_idx);
-						trial.initial_velocity = initial_velocity;
-						trials.Add(trial);
-					}
+					Exp2Trial trial;
+					trial.phase = 1;
+					trial.fps = fps_options[fps_idx];
+					trial.max_eccentricity_deg = max_eccentricity_options[eccentricity_idx];
+					trial.fixation_uv = max_eccentricity_to_fixation_uv(trial.max_eccentricity_deg);
+					trial.foveation_level = static_cast<EXP2_FOVEATION_LEVEL>(foveation_idx);
+					trial.method = EXP2_METHOD::GAUSSIAN_BLUR;
+					trial.initial_velocity = initial_velocity;
+					trial.saved_velocity_index = saved_blur_velocities.Num();
+					saved_blur_velocities.Add(initial_velocity);
+					trials.Add(trial);
 				}
 			}
 		}
+	}
+
+	for (int i = trials.Num() - 1; i > 0; i--)
+	{
+		int j = FMath::RandRange(0, i);
+		trials.Swap(i, j);
+	}
+}
+
+void AExperiment2Manager::initialize_noise_trials()
+{
+	TArray<Exp2Trial> phase_one_trials = trials;
+	trials.Empty();
+	current_trial_index = 0;
+	current_phase = 2;
+	noise_phase_initialized = true;
+
+	for (int i = 0; i < phase_one_trials.Num(); i++)
+	{
+		const Exp2Trial& phase_one_trial = phase_one_trials[i];
+		if (phase_one_trial.method != EXP2_METHOD::GAUSSIAN_BLUR ||
+			phase_one_trial.saved_velocity_index < 0 ||
+			phase_one_trial.saved_velocity_index >= saved_blur_velocities.Num())
+		{
+			continue;
+		}
+
+		Exp2Trial noise_trial;
+		noise_trial.phase = 2;
+		noise_trial.fps = phase_one_trial.fps;
+		noise_trial.max_eccentricity_deg = phase_one_trial.max_eccentricity_deg;
+		noise_trial.fixation_uv = phase_one_trial.fixation_uv;
+		noise_trial.foveation_level = phase_one_trial.foveation_level;
+		noise_trial.method = EXP2_METHOD::GABOR_NOISE;
+		noise_trial.saved_velocity_index = phase_one_trial.saved_velocity_index;
+		noise_trial.initial_velocity = saved_blur_velocities[phase_one_trial.saved_velocity_index];
+		trials.Add(noise_trial);
 	}
 
 	for (int i = trials.Num() - 1; i > 0; i--)
@@ -147,6 +202,17 @@ void AExperiment2Manager::on_response_recorded()
 	{
 		if (current_trial_index >= static_cast<uint32>(trials.Num()))
 		{
+			if (current_phase == 1 && !noise_phase_initialized)
+			{
+				initialize_noise_trials();
+				if (trials.Num() > 0)
+				{
+					update_fixation_cross(trials[current_trial_index].fixation_uv);
+					UE_LOG(LogTemp, Log, TEXT("Experiment 2 phase 1 complete. Phase 2 noise trials ready. Press spacebar to start trial 1 of %d."), trials.Num());
+					return;
+				}
+			}
+
 			set_screen_black(true);
 			UE_LOG(LogTemp, Log, TEXT("All Experiment 2 trials complete."));
 			return;
@@ -159,22 +225,45 @@ void AExperiment2Manager::on_response_recorded()
 
 	if (experiment_state == EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
-		write_trial_to_csv(trials[current_trial_index]);
-		current_trial_index++;
 		user->use_movement = false;
 		user->movement_velocity = 0.0f;
+		experiment_state = EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY;
+		update_fixation_cross(trials[current_trial_index].fixation_uv);
+		UE_LOG(LogTemp, Log, TEXT("Velocity locked at %.2f. Rate noise visibility: 1=no visible difference, 7=extremely distracting."), current_velocity_magnitude);
+		return;
+	}
+
+	if (experiment_state == EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Press 1-7 to record noise visibility before advancing."));
+		return;
+	}
+
+	if (experiment_state == EXP2_EXPERIMENT_STATE::RATING_RECORDED)
+	{
 		reset_user_position();
 		experiment_state = EXP2_EXPERIMENT_STATE::BLACK_SCREEN;
 		set_screen_black(true);
-
 		if (current_trial_index >= static_cast<uint32>(trials.Num()))
 		{
+			if (current_phase == 1 && !noise_phase_initialized)
+			{
+				initialize_noise_trials();
+				if (trials.Num() > 0)
+				{
+					update_fixation_cross(trials[current_trial_index].fixation_uv);
+					UE_LOG(LogTemp, Log, TEXT("Experiment 2 phase 1 complete. Phase 2 noise trials ready. Press spacebar to start trial 1 of %d."), trials.Num());
+					return;
+				}
+			}
+
 			UE_LOG(LogTemp, Log, TEXT("Experiment 2 complete."));
 			return;
 		}
 
 		update_fixation_cross(trials[current_trial_index].fixation_uv);
 		UE_LOG(LogTemp, Log, TEXT("Trial complete. %d remaining."), trials.Num() - current_trial_index);
+		return;
 	}
 }
 
@@ -188,12 +277,14 @@ void AExperiment2Manager::start_trial()
 
 	const Exp2Trial& trial = trials[current_trial_index];
 	current_velocity_magnitude = trial.initial_velocity;
+	current_noise_visibility_rating = 0;
 	reset_user_position();
 	apply_trial(trial);
 	experiment_state = EXP2_EXPERIMENT_STATE::TRIAL_RUNNING;
 	FString foveation_level_str = trial.method == EXP2_METHOD::NO_FOVEATION ? TEXT("None") : foveation_level_to_string(trial.foveation_level);
 
-	UE_LOG(LogTemp, Log, TEXT("Experiment 2 trial %d / %d: ecc=%.1f fixation_uv=(%.3f, %.3f) fps=%d level=%s method=%s initial_velocity=%.2f"),
+	UE_LOG(LogTemp, Log, TEXT("Experiment 2 phase %d trial %d / %d: ecc=%.1f fixation_uv=(%.3f, %.3f) fps=%d level=%s method=%s initial_velocity=%.2f"),
+		trial.phase,
 		current_trial_index + 1,
 		trials.Num(),
 		trial.max_eccentricity_deg,
@@ -260,6 +351,11 @@ void AExperiment2Manager::on_increase_velocity()
 		return;
 	}
 
+	if (experiment_state != EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
+	{
+		return;
+	}
+
 	current_velocity_magnitude += velocity_step;
 	current_velocity_magnitude = FMath::Clamp(current_velocity_magnitude, min_velocity, max_velocity);
 
@@ -274,6 +370,11 @@ void AExperiment2Manager::on_decrease_velocity()
 	if (experimentally_determine_foveation_level)
 	{
 		adjust_foveation_test_blur(-foveation_test_blur_step);
+		return;
+	}
+
+	if (experiment_state != EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
+	{
 		return;
 	}
 
@@ -328,11 +429,24 @@ void AExperiment2Manager::reset_user_position()
 
 void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 {
-	FString csv_path = FPaths::ProjectDir() + TEXT("experiment2_results.csv");
+	FString csv_path = FPaths::ProjectDir() + TEXT("experiment2_alternative_results.csv");
 	bool file_exists = FPlatformFileManager::Get().GetPlatformFile().FileExists(*csv_path);
 	FString foveation_level_str = trial.method == EXP2_METHOD::NO_FOVEATION ? TEXT("None") : foveation_level_to_string(trial.foveation_level);
+	float matched_blur_velocity = 0.0f;
+	float velocity_gain = 0.0f;
 
-	FString row = FString::Printf(TEXT("%d,%.1f,%.6f,%.6f,%d,%d,%s,%s,%.2f,%.2f\n"),
+	if (trial.saved_velocity_index >= 0 && trial.saved_velocity_index < saved_blur_velocities.Num())
+	{
+		matched_blur_velocity = saved_blur_velocities[trial.saved_velocity_index];
+	}
+
+	if (matched_blur_velocity > 0.0f)
+	{
+		velocity_gain = current_velocity_magnitude / matched_blur_velocity;
+	}
+
+	FString row = FString::Printf(TEXT("%d,%d,%.1f,%.6f,%.6f,%d,%d,%s,%s,%.2f,%.2f,%.2f,%.4f,%u\n"),
+		trial.phase,
 		current_trial_index,
 		trial.max_eccentricity_deg,
 		trial.fixation_uv.X,
@@ -342,17 +456,117 @@ void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 		*foveation_level_str,
 		*method_to_string(trial.method),
 		trial.initial_velocity,
-		current_velocity_magnitude);
+		current_velocity_magnitude,
+		matched_blur_velocity,
+		velocity_gain,
+		current_noise_visibility_rating);
 
 	if (!file_exists)
 	{
-		FString header = TEXT("trial_index,max_eccentricity_deg,fixation_uv_x,fixation_uv_y,fps,render_every_n_frames,foveation_level,method,initial_velocity,final_velocity\n");
+		FString header = TEXT("phase,trial_index,max_eccentricity_deg,fixation_uv_x,fixation_uv_y,fps,render_every_n_frames,foveation_level,method,initial_velocity,final_velocity,matched_blur_velocity,velocity_gain,noise_visibility_rating\n");
 		FFileHelper::SaveStringToFile(header + row, *csv_path);
 	}
 	else
 	{
 		FFileHelper::SaveStringToFile(row, *csv_path, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
 	}
+}
+
+void AExperiment2Manager::record_noise_visibility_rating()
+{
+	if (experimentally_determine_foveation_level || experiment_state != EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY)
+	{
+		return;
+	}
+
+	if (!can_accept_noise_visibility_rating())
+	{
+		return;
+	}
+
+	APlayerController* pc = GetWorld()->GetFirstPlayerController();
+	if (!pc)
+	{
+		return;
+	}
+
+	uint32 rating = 0;
+	if (pc->WasInputKeyJustPressed(EKeys::One))
+	{
+		rating = 1;
+	}
+	else if (pc->WasInputKeyJustPressed(EKeys::Two))
+	{
+		rating = 2;
+	}
+	else if (pc->WasInputKeyJustPressed(EKeys::Three))
+	{
+		rating = 3;
+	}
+	else if (pc->WasInputKeyJustPressed(EKeys::Four))
+	{
+		rating = 4;
+	}
+	else if (pc->WasInputKeyJustPressed(EKeys::Five))
+	{
+		rating = 5;
+	}
+	else if (pc->WasInputKeyJustPressed(EKeys::Six))
+	{
+		rating = 6;
+	}
+	else if (pc->WasInputKeyJustPressed(EKeys::Seven))
+	{
+		rating = 7;
+	}
+
+	if (rating == 0)
+	{
+		return;
+	}
+
+	current_noise_visibility_rating = FMath::Clamp(rating, 1u, 7u);
+	const Exp2Trial& trial = trials[current_trial_index];
+	if (trial.phase == 1 && trial.method == EXP2_METHOD::GAUSSIAN_BLUR && trial.saved_velocity_index >= 0 && trial.saved_velocity_index < saved_blur_velocities.Num())
+	{
+		saved_blur_velocities[trial.saved_velocity_index] = current_velocity_magnitude;
+	}
+
+	write_trial_to_csv(trials[current_trial_index]);
+	current_trial_index++;
+	experiment_state = EXP2_EXPERIMENT_STATE::RATING_RECORDED;
+
+	UE_LOG(LogTemp, Log, TEXT("Recorded noise visibility rating %u. Press spacebar to black out and prepare the next trial."), current_noise_visibility_rating);
+}
+
+bool AExperiment2Manager::can_accept_noise_visibility_rating() const
+{
+	if (!user || !user->use_eyetracking)
+	{
+		return true;
+	}
+
+	if (current_trial_index >= static_cast<uint32>(trials.Num()))
+	{
+		return false;
+	}
+
+	const FVector2f gaze = user->gaze_pos;
+	const FVector2f fixation = trials[current_trial_index].fixation_uv;
+	const float x_diff = gaze.X - fixation.X;
+	const float y_diff = gaze.Y - fixation.Y;
+	const float x_physical = x_diff * screen_width_cm;
+	const float y_physical = y_diff * screen_height_cm;
+	const float physical_dist = FMath::Sqrt(x_physical * x_physical + y_physical * y_physical);
+	const float gaze_error_deg = FMath::RadiansToDegrees(FMath::Atan(physical_dist / distance_from_screen_cm));
+
+	if (gaze_error_deg > max_rating_gaze_error_deg)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Rating rejected: gaze is %.2f deg from fixation cross; max allowed is %.2f deg."), gaze_error_deg, max_rating_gaze_error_deg);
+		return false;
+	}
+
+	return true;
 }
 
 void AExperiment2Manager::configure_foveation_test_mode()
