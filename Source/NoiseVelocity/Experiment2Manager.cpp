@@ -100,9 +100,9 @@ void AExperiment2Manager::initialize_calibration_trials()
 
 	for (int rep = 0; rep < num_repetitions; rep++)
 	{
-		for (int eccentricity_idx = 0; eccentricity_idx < 3; eccentricity_idx++)
+		for (int eccentricity_idx = 0; eccentricity_idx < 2; eccentricity_idx++)
 		{
-			for (int fps_idx = 0; fps_idx < 3; fps_idx++)
+			for (int fps_idx = 0; fps_idx < 2; fps_idx++)
 			{
 				Exp2Trial no_foveation_trial;
 				no_foveation_trial.phase = 1;
@@ -225,6 +225,11 @@ void AExperiment2Manager::on_response_recorded()
 
 	if (experiment_state == EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
+		if (user->view_extension)
+		{
+			user->view_extension->freeze_frame_enabled = true;
+		}
+
 		user->use_movement = false;
 		user->movement_velocity = 0.0f;
 		experiment_state = EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY;
@@ -323,6 +328,7 @@ void AExperiment2Manager::apply_trial(const Exp2Trial& trial)
 
 	if (user->view_extension)
 	{
+		user->view_extension->freeze_frame_enabled = false;
 		user->view_extension->reset_cache_requested = true;
 	}
 
@@ -391,6 +397,11 @@ void AExperiment2Manager::set_screen_black(bool black)
 {
 	if (user && user->view_extension)
 	{
+		if (black)
+		{
+			user->view_extension->freeze_frame_enabled = false;
+		}
+
 		user->view_extension->is_active = !black;
 	}
 

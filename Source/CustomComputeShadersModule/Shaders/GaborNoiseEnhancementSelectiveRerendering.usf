@@ -33,8 +33,11 @@ uint region_mode; // 0 = FULLSCREEN, 1 = LEFT, 2 = RIGHT
 // the appropriate half of Texture2D most_recently_rendered_image)
 uint comparison_mode; 
 
+
 static const float gabor_a = 0.08f;
 static const float gabor_support_threshold = 0.01f;
+static const bool use_min_noise_amplitude = true;
+static const float min_noise_amplitude = 0.0025f;
 
 float gabor_kernel_radius(float envelope_scale)
 {
@@ -360,6 +363,7 @@ void selective_rerender_noise_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 			float amp = amplitude_from_laplacian(source_uv, input_foveated, linear_sampler, l_a, s_k);
 			float w = smoothstep_custom(sigma_eff, 0.5, 2.0);
 			amp *= w;
+			amp = max(amp, min_noise_amplitude * (use_min_noise_amplitude ? 1.0f : 0.0f));
 
 			float base_phase = 2.0f * PI * frac(time_seconds * phase_cycles_per_sec);
 			float phase_offset = base_phase * phase_strength * velocity_magnitude;

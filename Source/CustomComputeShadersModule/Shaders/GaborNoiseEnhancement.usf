@@ -29,6 +29,8 @@ uint region_mode;
 
 static const float gabor_a = 0.08f;
 static const float gabor_support_threshold = 0.01f;
+static const bool use_min_noise_amplitude = true;
+static const float min_noise_amplitude = 0.0025f;
 
 float gabor_kernel_radius()
 {
@@ -237,6 +239,7 @@ void gabor_foveated_enhance_cs(uint3 DispatchThreadId : SV_DispatchThreadID)
 	
 		float w = smoothstep_custom(sigma_pix, 0.5, 2.0);
 		amp *= w;
+		amp = max(amp, min_noise_amplitude * (use_min_noise_amplitude ? 1.0f : 0.0f));
 	
 		float noise = synthesize_gabor_noise(pixel_pos, texture_size, F_L, F_H, amp, theta, cells, impulses_per_cell, seed, velocity_decoded);
 		noise *= gray_bar_noise_mask * fixation_bar_noise_mask;

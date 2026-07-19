@@ -72,16 +72,24 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 	{
 		cached_base_image.SafeRelease();
 		cached_noise_texture.SafeRelease();
+		cached_final_frame.SafeRelease();
 		frame_counter = 0;
 		reset_cache_requested = false;
+	}
+
+	FRDGTextureRef scene_colour = (*inputs.SceneTextures)->SceneColorTexture;
+	FRDGTextureRef motion_vector_texture = (*inputs.SceneTextures)->GBufferVelocityTexture;
+
+	if (freeze_frame_enabled && cached_final_frame)
+	{
+		FRDGTextureRef frozen_frame = graph_builder.RegisterExternalTexture(cached_final_frame, TEXT("frozen_final_frame"));
+		AddCopyTexturePass(graph_builder, frozen_frame, scene_colour);
+		return;
 	}
 
 	bool should_render_full_frame = (frame_counter % render_every_n_frames == 0);
 	frame_counter++;
 	dynamic_seed++;
-
-	FRDGTextureRef scene_colour = (*inputs.SceneTextures)->SceneColorTexture;
-	FRDGTextureRef motion_vector_texture = (*inputs.SceneTextures)->GBufferVelocityTexture;
 
 	FRDGTextureDesc desc = scene_colour->Desc;
 	desc.Flags |= TexCreate_UAV;
@@ -135,6 +143,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_existing) ||
 			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold))
 		{
+			graph_builder.QueueTextureExtraction(blur_output, &cached_final_frame, ERDGResourceExtractionFlags::None);
 			AddCopyTexturePass(graph_builder, blur_output, scene_colour);
 			return;
 		}
@@ -184,6 +193,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 
 		// Cache noise for next frame
 		graph_builder.QueueTextureExtraction(noise_output, &cached_noise_texture, ERDGResourceExtractionFlags::None);
+		graph_builder.QueueTextureExtraction(combined_noise_output, &cached_final_frame, ERDGResourceExtractionFlags::None);
 
 		// Copy final output to scene color
 		AddCopyTexturePass(graph_builder, combined_noise_output, scene_colour);
@@ -320,6 +330,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		// ONLY copy it back to left side?
 
 
+		graph_builder.QueueTextureExtraction(combined_output, &cached_final_frame, ERDGResourceExtractionFlags::None);
 		AddCopyTexturePass(graph_builder, combined_output, scene_colour);
 	
 		// Debug: Display the reprojected noise

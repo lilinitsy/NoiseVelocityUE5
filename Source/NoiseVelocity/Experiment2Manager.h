@@ -125,7 +125,7 @@ public:
 	float high_frequency_scale = 0.5f;
 
 	UPROPERTY(EditAnywhere, Category = "Foveation Levels")
-	float low_blur_rate_arcmin_per_degree = 0.17f;
+	float low_blur_rate_arcmin_per_degree = 0.25f;
 
 	UPROPERTY(EditAnywhere, Category = "Foveation Levels")
 	float high_blur_rate_arcmin_per_degree = 0.34f;
