@@ -440,7 +440,14 @@ void AExperiment2Manager::reset_user_position()
 
 void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 {
-	FString csv_path = FPaths::ProjectDir() + TEXT("experiment2_alternative_results.csv");
+	FString level_name = TEXT("UnknownLevel");
+	if (GetWorld())
+	{
+		level_name = GetWorld()->GetMapName();
+		level_name.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+	}
+	level_name = FPaths::MakeValidFileName(level_name);
+	FString csv_path = FPaths::ProjectDir() + FString::Printf(TEXT("experiment2_alternative_results_%s.csv"), *level_name);
 	bool file_exists = FPlatformFileManager::Get().GetPlatformFile().FileExists(*csv_path);
 	FString foveation_level_str = trial.method == EXP2_METHOD::NO_FOVEATION ? TEXT("None") : foveation_level_to_string(trial.foveation_level);
 	float matched_blur_velocity = 0.0f;
