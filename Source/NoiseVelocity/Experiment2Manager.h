@@ -32,6 +32,13 @@ enum class EXP2_EXPERIMENT_STATE
 	RATING_RECORDED
 };
 
+enum class EXPERIMENT2_COMPARISON_MODE : uint32
+{
+	noise = 1,
+	raw_hold = 3,
+	blur_hold = 4
+};
+
 struct Exp2Trial
 {
 	int phase;

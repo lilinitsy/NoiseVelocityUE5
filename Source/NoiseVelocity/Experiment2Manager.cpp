@@ -8,12 +8,6 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
-enum class experiment2ComparisonMode : uint32
-{
-	noise = 1,
-	raw_hold = 3,
-	blur_hold = 4
-};
 
 AExperiment2Manager::AExperiment2Manager()
 {
@@ -339,15 +333,15 @@ void AExperiment2Manager::apply_trial(const Exp2Trial& trial)
 
 	if (trial.method == EXP2_METHOD::NO_FOVEATION)
 	{
-		user->comparison_mode = static_cast<uint32>(experiment2ComparisonMode::raw_hold);
+		user->comparison_mode = static_cast<uint32>(EXPERIMENT2_COMPARISON_MODE::raw_hold);
 	}
 	else if (trial.method == EXP2_METHOD::GAUSSIAN_BLUR)
 	{
-		user->comparison_mode = static_cast<uint32>(experiment2ComparisonMode::blur_hold);
+		user->comparison_mode = static_cast<uint32>(EXPERIMENT2_COMPARISON_MODE::blur_hold);
 	}
 	else
 	{
-		user->comparison_mode = static_cast<uint32>(experiment2ComparisonMode::noise);
+		user->comparison_mode = static_cast<uint32>(EXPERIMENT2_COMPARISON_MODE::noise);
 	}
 
 	if (user->view_extension)
@@ -630,7 +624,7 @@ void AExperiment2Manager::configure_foveation_test_mode()
 	user->split_horizontally = false;
 	user->region_mode = 0;
 	user->render_every_n_frames = 1;
-	user->comparison_mode = static_cast<uint32>(experiment2ComparisonMode::blur_hold);
+	user->comparison_mode = static_cast<uint32>(EXPERIMENT2_COMPARISON_MODE::blur_hold);
 	user->use_radially_increasing_blur = 0;
 
 	apply_foveation_test_blur();
