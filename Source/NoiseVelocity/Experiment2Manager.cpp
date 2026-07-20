@@ -79,6 +79,29 @@ void AExperiment2Manager::Tick(float DeltaTime)
 		return;
 	}
 
+	if (user->use_eyetracking && current_trial_index < static_cast<uint32>(trials.Num()))
+	{
+		const FVector2f gaze = user->gaze_pos;
+		const FVector2f fixation = trials[current_trial_index].fixation_uv;
+		const float x_diff = gaze.X - fixation.X;
+		const float y_diff = gaze.Y - fixation.Y;
+		const float x_physical = x_diff * screen_width_cm;
+		const float y_physical = y_diff * screen_height_cm;
+		const float physical_dist = FMath::Sqrt(x_physical * x_physical + y_physical * y_physical);
+		const float gaze_error_deg = FMath::RadiansToDegrees(FMath::Atan(physical_dist / distance_from_screen_cm));
+
+		if (gaze_error_deg > max_rating_gaze_error_deg && !screen_blacked_from_gaze)
+		{
+			screen_blacked_from_gaze = true;
+			set_screen_black(true);
+		}
+		else if (gaze_error_deg <= max_rating_gaze_error_deg && screen_blacked_from_gaze)
+		{
+			screen_blacked_from_gaze = false;
+			set_screen_black(false);
+		}
+	}
+
 	user->use_movement = true;
 	user->movement_velocity = current_velocity_magnitude;
 }
@@ -283,6 +306,7 @@ void AExperiment2Manager::start_trial()
 	const Exp2Trial& trial = trials[current_trial_index];
 	current_velocity_magnitude = trial.initial_velocity;
 	current_noise_visibility_rating = 0;
+	screen_blacked_from_gaze = false;
 	reset_user_position();
 	apply_trial(trial);
 	experiment_state = EXP2_EXPERIMENT_STATE::TRIAL_RUNNING;

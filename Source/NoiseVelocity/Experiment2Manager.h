@@ -139,6 +139,7 @@ public:
 	TArray<Exp2Trial> trials;
 	TArray<float> saved_blur_velocities;
 	bool noise_phase_initialized = false;
+	bool screen_blacked_from_gaze = false;
 
 	void initialize_trials();
 	void initialize_calibration_trials();
