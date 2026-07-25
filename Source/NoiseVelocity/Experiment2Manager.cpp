@@ -459,38 +459,36 @@ void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 	FString csv_path = FPaths::ProjectDir() + FString::Printf(TEXT("experiment2_alternative_results_%s.csv"), *level_name);
 	bool file_exists = FPlatformFileManager::Get().GetPlatformFile().FileExists(*csv_path);
 	FString foveation_level_str = trial.method == EXP2_METHOD::NO_FOVEATION ? TEXT("None") : foveation_level_to_string(trial.foveation_level);
-	float matched_blur_velocity = 0.0f;
+	float velocity_gain_baseline = 0.0f;
 	float velocity_gain = 0.0f;
 
 	if (trial.saved_velocity_index >= 0 && trial.saved_velocity_index < saved_blur_velocities.Num())
 	{
-		matched_blur_velocity = saved_blur_velocities[trial.saved_velocity_index];
+		velocity_gain_baseline = saved_blur_velocities[trial.saved_velocity_index];
 	}
 
-	if (matched_blur_velocity > 0.0f)
+	if (velocity_gain_baseline > 0.0f)
 	{
-		velocity_gain = current_velocity_magnitude / matched_blur_velocity;
+		velocity_gain = current_velocity_magnitude / velocity_gain_baseline;
 	}
 
-	FString row = FString::Printf(TEXT("%d,%d,%.1f,%.6f,%.6f,%d,%d,%s,%s,%.2f,%.2f,%.2f,%.4f,%u\n"),
+	FString row = FString::Printf(TEXT("%d,%d,%.1f,%.6f,%d,%d,%s,%s,%.2f,%.2f,%.4f,%u\n"),
 		trial.phase,
 		current_trial_index,
 		trial.max_eccentricity_deg,
 		trial.fixation_uv.X,
-		trial.fixation_uv.Y,
 		trial.fps,
 		fps_to_render_every_n_frames(trial.fps),
 		*foveation_level_str,
 		*method_to_string(trial.method),
 		trial.initial_velocity,
 		current_velocity_magnitude,
-		matched_blur_velocity,
 		velocity_gain,
 		current_noise_visibility_rating);
 
 	if (!file_exists)
 	{
-		FString header = TEXT("phase,trial_index,max_eccentricity_deg,fixation_uv_x,fixation_uv_y,fps,render_every_n_frames,foveation_level,method,initial_velocity,final_velocity,matched_blur_velocity,velocity_gain,noise_visibility_rating\n");
+		FString header = TEXT("phase,trial_index,max_eccentricity_deg,fixation_uv_x,fps,render_every_n_frames,foveation_level,method,initial_velocity,final_velocity,velocity_gain,noise_visibility_rating\n");
 		FFileHelper::SaveStringToFile(header + row, *csv_path);
 	}
 	else
