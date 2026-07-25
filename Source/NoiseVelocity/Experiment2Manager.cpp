@@ -112,7 +112,7 @@ void AExperiment2Manager::initialize_calibration_trials()
 	noise_phase_initialized = false;
 	current_phase = 1;
 
-	const int fps_options[] = {10, 20, 30};
+	const int fps_options[] = {12, 18, 24};
 	const float max_eccentricity_options[] = {28.0f, 35.0f, 42.0f};
 
 	for (int rep = 0; rep < num_repetitions; rep++)
