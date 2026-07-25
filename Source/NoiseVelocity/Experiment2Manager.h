@@ -87,7 +87,7 @@ public:
 	float distance_from_screen_cm = 60.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
-	float initial_velocity = 250.0f;
+	float initial_velocity = 1000.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	float velocity_step = 25.0f;
@@ -96,7 +96,7 @@ public:
 	float min_velocity = 5.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
-	float max_velocity = 1200.0f;
+	float max_velocity = 2000.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	float max_rating_gaze_error_deg = 2.0f;

@@ -242,22 +242,13 @@ void AExperiment2Manager::on_response_recorded()
 
 	if (experiment_state == EXP2_EXPERIMENT_STATE::TRIAL_RUNNING)
 	{
-		if (user->view_extension)
-		{
-			user->view_extension->freeze_frame_enabled = true;
-		}
-
-		user->use_movement = false;
-		user->movement_velocity = 0.0f;
-		experiment_state = EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY;
-		update_fixation_cross(trials[current_trial_index].fixation_uv);
-		UE_LOG(LogTemp, Log, TEXT("Velocity locked at %.2f. Rate noise visibility: 1=no visible difference, 7=extremely distracting."), current_velocity_magnitude);
+		UE_LOG(LogTemp, Log, TEXT("Press 1-5 to record quality rating and end this trial."));
 		return;
 	}
 
 	if (experiment_state == EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Press 1-7 to record noise visibility before advancing."));
+		UE_LOG(LogTemp, Log, TEXT("Press 1-5 to record quality rating and end this trial."));
 		return;
 	}
 
@@ -510,7 +501,9 @@ void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 
 void AExperiment2Manager::record_noise_visibility_rating()
 {
-	if (experimentally_determine_foveation_level || experiment_state != EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY)
+	if (experimentally_determine_foveation_level ||
+		(experiment_state != EXP2_EXPERIMENT_STATE::TRIAL_RUNNING &&
+		 experiment_state != EXP2_EXPERIMENT_STATE::RATING_NOISE_VISIBILITY))
 	{
 		return;
 	}
@@ -561,6 +554,17 @@ void AExperiment2Manager::record_noise_visibility_rating()
 		return;
 	}
 
+	if (user)
+	{
+		if (user->view_extension)
+		{
+			user->view_extension->freeze_frame_enabled = false;
+		}
+
+		user->use_movement = false;
+		user->movement_velocity = 0.0f;
+	}
+
 	current_noise_visibility_rating = FMath::Clamp(rating, 1u, 7u);
 	const Exp2Trial& trial = trials[current_trial_index];
 	if (trial.phase == 1 && trial.method == EXP2_METHOD::GAUSSIAN_BLUR && trial.saved_velocity_index >= 0 && trial.saved_velocity_index < saved_blur_velocities.Num())
@@ -570,9 +574,31 @@ void AExperiment2Manager::record_noise_visibility_rating()
 
 	write_trial_to_csv(trials[current_trial_index]);
 	current_trial_index++;
-	experiment_state = EXP2_EXPERIMENT_STATE::RATING_RECORDED;
+	reset_user_position();
+	screen_blacked_from_gaze = false;
+	experiment_state = EXP2_EXPERIMENT_STATE::BLACK_SCREEN;
+	set_screen_black(true);
 
-	UE_LOG(LogTemp, Log, TEXT("Recorded noise visibility rating %u. Press spacebar to black out and prepare the next trial."), current_noise_visibility_rating);
+	if (current_trial_index >= static_cast<uint32>(trials.Num()))
+	{
+		if (current_phase == 1 && !noise_phase_initialized)
+		{
+			initialize_noise_trials();
+			if (trials.Num() > 0)
+			{
+				update_fixation_cross(trials[current_trial_index].fixation_uv);
+				UE_LOG(LogTemp, Log, TEXT("Recorded quality rating %u. Experiment 2 phase 1 complete. Phase 2 noise trials ready. Press spacebar to start trial 1 of %d."), current_noise_visibility_rating, trials.Num());
+				return;
+			}
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("Recorded quality rating %u. Experiment 2 complete."), current_noise_visibility_rating);
+		return;
+	}
+
+	update_fixation_cross(trials[current_trial_index].fixation_uv);
+
+	UE_LOG(LogTemp, Log, TEXT("Recorded quality rating %u. Trial complete. Press spacebar to start the next trial. %d remaining."), current_noise_visibility_rating, trials.Num() - current_trial_index);
 }
 
 bool AExperiment2Manager::can_accept_noise_visibility_rating() const

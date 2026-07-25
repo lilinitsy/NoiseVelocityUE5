@@ -30,7 +30,7 @@ uint region_mode;
 static const float gabor_a = 0.08f;
 static const float gabor_support_threshold = 0.01f;
 static const bool use_min_noise_amplitude = true;
-static const float min_noise_amplitude = 0.005f;
+static const float min_noise_amplitude = 0.002f;
 
 float gabor_kernel_radius()
 {
