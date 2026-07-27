@@ -44,6 +44,7 @@ void FGaussianBlurViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& gr
     params->distance_from_screen = distance_from_screen;
     params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
     params->use_radially_increasing_blur = use_radially_increasing_blur;
+    params->blur_region_mode = 0;
 
     const FIntVector group_count(
         FMath::DivideAndRoundUp(desc.Extent.X, 16),

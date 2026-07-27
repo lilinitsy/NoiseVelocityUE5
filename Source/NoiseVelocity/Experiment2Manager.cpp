@@ -657,7 +657,7 @@ void AExperiment2Manager::configure_foveation_test_mode()
 	user->split_horizontally = false;
 	user->region_mode = 0;
 	user->render_every_n_frames = 1;
-	user->comparison_mode = static_cast<uint32>(EXPERIMENT2_COMPARISON_MODE::blur_hold);
+	user->comparison_mode = static_cast<uint32>(EXPERIMENT2_COMPARISON_MODE::foveation_test_blur);
 	user->use_radially_increasing_blur = 0;
 
 	apply_foveation_test_blur();

@@ -112,6 +112,7 @@ void FGaborBlueNoiseTextureTilingViewExtension::PrePostProcessPass_RenderThread(
 	blur_params->distance_from_screen = distance_from_screen_cm;
 	blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
 	blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
+	blur_params->blur_region_mode = 0;
 
 	const FIntVector group_count(FMath::DivideAndRoundUp(desc.Extent.X, 16),FMath::DivideAndRoundUp(desc.Extent.Y, 16), 1);
 

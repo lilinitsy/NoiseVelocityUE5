@@ -14,6 +14,7 @@ float  screen_height_cm;
 float  distance_from_screen;
 float blur_rate_arcmin_per_degree;
 uint use_radially_increasing_blur;
+uint blur_region_mode;
 
 
 
@@ -69,11 +70,12 @@ void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
     float2 uv = (float2)id.xy / float2(width, height);
 
     float grayed_eccentricity = 10.0f;
+    bool foveation_test_blur = blur_region_mode == 2;
 
     float x_offset_cm = (uv.x - foveation_center.x) * screen_width_cm;
     float x_eccentricity_deg = degrees(atan(x_offset_cm / distance_from_screen));
 
-    if (x_eccentricity_deg < grayed_eccentricity)
+    if (!foveation_test_blur && x_eccentricity_deg < grayed_eccentricity)
     {
         output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f);
         return;
@@ -88,6 +90,12 @@ void gaussian_blur_main_cs(uint3 id : SV_DispatchThreadID)
     if (eccentricity(uv, foveation_center, distance_from_screen, float2(screen_width_cm, screen_height_cm)) <= grayed_eccentricity + 0.01f)
     {
         output_texture[pixel_pos] = float4(0.5f, 0.5f, 0.5f, 1.0f); // medium gray
+        return;
+    }
+
+    if (foveation_test_blur && uv.x < foveation_center.x)
+    {
+        output_texture[pixel_pos] = input_texture[pixel_pos];
         return;
     }
 

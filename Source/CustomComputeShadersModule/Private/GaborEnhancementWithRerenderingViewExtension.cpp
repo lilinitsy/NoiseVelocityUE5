@@ -9,7 +9,8 @@ enum class gaborComparisonMode : unsigned int
 	noise = 1,
 	blur_existing = 2,
 	raw_hold = 3,
-	blur_hold = 4
+	blur_hold = 4,
+	foveation_test_blur = 5
 };
 
 FGaborEnhancementWithRerenderingViewExtension::FGaborEnhancementWithRerenderingViewExtension(
@@ -116,6 +117,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		blur_params->distance_from_screen = distance_from_screen_cm;
 		blur_params->blur_rate_arcmin_per_degree = comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ? 0.0f : blur_rate_arcmin_per_degree;
 		blur_params->use_radially_increasing_blur = comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ? 0 : use_radially_increasing_blur;
+		blur_params->blur_region_mode = comparison_mode == static_cast<unsigned int>(gaborComparisonMode::foveation_test_blur) ? 2 : 0;
 
 		const FIntVector blur_group_count(
 			FMath::DivideAndRoundUp(desc.Extent.X, 16),
@@ -141,7 +143,8 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 		// Blur only - skip all noise
 		if (comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ||
 			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_existing) ||
-			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold))
+			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold) ||
+			comparison_mode == static_cast<unsigned int>(gaborComparisonMode::foveation_test_blur))
 		{
 			graph_builder.QueueTextureExtraction(blur_output, &cached_final_frame, ERDGResourceExtractionFlags::None);
 			AddCopyTexturePass(graph_builder, blur_output, scene_colour);
@@ -203,7 +206,8 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 	// Do on the other frames that don't % == 0
 	else if (cached_base_image &&
 		(comparison_mode == static_cast<unsigned int>(gaborComparisonMode::raw_hold) ||
-		 comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold)))
+		 comparison_mode == static_cast<unsigned int>(gaborComparisonMode::blur_hold) ||
+		 comparison_mode == static_cast<unsigned int>(gaborComparisonMode::foveation_test_blur)))
 	{
 		FRDGTextureRef cached_base = graph_builder.RegisterExternalTexture(cached_base_image, TEXT("cached_base_image"));
 		AddCopyTexturePass(graph_builder, cached_base, scene_colour);
@@ -246,6 +250,7 @@ void FGaborEnhancementWithRerenderingViewExtension::PrePostProcessPass_RenderThr
 			blur_params->distance_from_screen = distance_from_screen_cm;
 			blur_params->blur_rate_arcmin_per_degree = blur_rate_arcmin_per_degree;
 			blur_params->use_radially_increasing_blur = use_radially_increasing_blur;
+			blur_params->blur_region_mode = 0;
 
 			const FIntVector blur_group_count(
 				FMath::DivideAndRoundUp(desc.Extent.X, 16),

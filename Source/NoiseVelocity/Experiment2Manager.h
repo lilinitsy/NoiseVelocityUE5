@@ -36,7 +36,8 @@ enum class EXPERIMENT2_COMPARISON_MODE : uint32
 {
 	noise = 1,
 	raw_hold = 3,
-	blur_hold = 4
+	blur_hold = 4,
+	foveation_test_blur = 5
 };
 
 struct Exp2Trial

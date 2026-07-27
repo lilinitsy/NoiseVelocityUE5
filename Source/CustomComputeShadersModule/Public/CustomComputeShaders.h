@@ -52,6 +52,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FGaussianBlurShaderParameters, )
 
 	SHADER_PARAMETER(float, blur_rate_arcmin_per_degree)
 	SHADER_PARAMETER(unsigned int, use_radially_increasing_blur)
+	SHADER_PARAMETER(unsigned int, blur_region_mode)
 END_SHADER_PARAMETER_STRUCT()
 class FGaussianBlurCS : public FGlobalShader
 {
