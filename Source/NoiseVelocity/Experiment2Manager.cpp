@@ -50,16 +50,25 @@ void AExperiment2Manager::BeginPlay()
 
 	initialize_trials();
 
+	FVector2f initial_fixation_uv = fixation_uv;
+	if (trials.Num() > 0)
+	{
+		initial_fixation_uv = trials[0].fixation_uv;
+	}
+
 	if (user)
 	{
 		user->use_movement = false;
 		user->movement_velocity = 0.0f;
-		user->fixation_center = fixation_uv;
+		user->fixation_center = initial_fixation_uv;
 		user->split_horizontally = false;
 		user->region_mode = 0;
 		user->update_view_extension();
-		update_fixation_cross(fixation_uv);
+		update_fixation_cross(initial_fixation_uv);
 	}
+
+	experiment_state = EXP2_EXPERIMENT_STATE::BLACK_SCREEN;
+	set_screen_black(true);
 
 	UE_LOG(LogTemp, Log, TEXT("Experiment 2 ready. Press spacebar to start trial 1 of %d."), trials.Num());
 }
@@ -488,7 +497,7 @@ void AExperiment2Manager::write_trial_to_csv(const Exp2Trial& trial)
 
 	if (!file_exists)
 	{
-		FString header = TEXT("phase,trial_index,max_eccentricity_deg,fixation_uv_x,fps,render_every_n_frames,foveation_level,method,initial_velocity,final_velocity,velocity_gain,noise_visibility_rating\n");
+		FString header = TEXT("phase,trial_index,max_eccentricity_deg,fixation_uv_x,fps,render_every_n_frames,foveation_level,method,initial_velocity,final_velocity,velocity_gain_noisephase,noise_visibility_rating\n");
 		FFileHelper::SaveStringToFile(header + row, *csv_path);
 	}
 	else
