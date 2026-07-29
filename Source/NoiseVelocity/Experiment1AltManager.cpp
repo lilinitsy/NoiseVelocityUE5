@@ -4,6 +4,7 @@
 #include "Experiment1AltManager.h"
 
 #include "Camera/CameraComponent.h"
+#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Camera/PlayerCameraManager.h"
 
@@ -45,6 +46,8 @@ void AExperiment1AltManager::BeginPlay()
 			InputComponent->BindAction("RecordResponse", IE_Pressed, this, &AExperiment1AltManager::on_response_recorded);
 			InputComponent->BindAction("IncreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_increase_velocity);
 			InputComponent->BindAction("DecreaseVelocity", IE_Pressed, this, &AExperiment1AltManager::on_decrease_velocity);
+			InputComponent->BindKey(EKeys::MouseScrollUp, IE_Pressed, this, &AExperiment1AltManager::on_increase_velocity);
+			InputComponent->BindKey(EKeys::MouseScrollDown, IE_Pressed, this, &AExperiment1AltManager::on_decrease_velocity);
 			
 			// Debugging
 			// InputComponent->BindAction("MoveObjectLeft", IE_Pressed, this, &AExperiment1AltManager::move_object_left);
@@ -162,7 +165,9 @@ void AExperiment1AltManager::start_trial()
 
 	render_every_n_frames = trial.render_every_n_fps;
 	user->render_every_n_frames = trial.render_every_n_fps;
-	user->region_mode = (trial.leftright == EXP1_ALT_LEFTRIGHT::LEFT) ? 1 : 2; // set it to left (1) or right (2)
+	// Fullscreen; any non-zero region_mode makes the shaders draw the horizontal gray bar and
+	// mirror one half of the screen, which hides the sphere as it crosses the midline.
+	user->region_mode = 0;
 	user->frequency_scale = trial.frequency;
 	user->phase_cycles_per_sec = trial.render_every_n_fps; // this looks more aesthetic and makes sense to cycle noise
 	user->update_view_extension();
