@@ -411,7 +411,7 @@ void AExperiment2Manager::on_decrease_velocity()
 	}
 }
 
-void AExperiment2Manager::set_screen_black(bool black)
+void AExperiment2Manager::set_screen_black(bool black, float camera_fade_time)
 {
 	if (user && user->view_extension)
 	{
@@ -431,11 +431,11 @@ void AExperiment2Manager::set_screen_black(bool black)
 
 	if (black)
 	{
-		camera->StartCameraFade(0.0f, 1.0f, 0.1f, FLinearColor::Black, false, true);
+		camera->StartCameraFade(0.0f, 1.0f, camera_fade_time, FLinearColor::Black, false, true);
 	}
 	else
 	{
-		camera->StartCameraFade(1.0f, 0.0f, 0.1f, FLinearColor::Black, false, false);
+		camera->StartCameraFade(1.0f, 0.0f, camera_fade_time, FLinearColor::Black, false, false);
 	}
 }
 
@@ -668,6 +668,7 @@ void AExperiment2Manager::configure_foveation_test_mode()
 
 void AExperiment2Manager::apply_foveation_test_blur()
 {
+	set_screen_black(true, 0.25f);
 	if (!user)
 	{
 		return;
@@ -683,6 +684,9 @@ void AExperiment2Manager::apply_foveation_test_blur()
 	user->update_view_extension();
 
 	UE_LOG(LogTemp, Log, TEXT("Foveation test blur_rate_arcmin_per_degree = %.3f"), foveation_test_blur_rate);
+
+	set_screen_black(false, 0.25f);
+
 }
 
 void AExperiment2Manager::adjust_foveation_test_blur(float delta)
