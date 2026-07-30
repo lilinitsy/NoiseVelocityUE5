@@ -2,7 +2,44 @@
 
 
 #include "GaborEnhanceWithRerenderTestChar.h"
+#include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "HAL/IConsoleManager.h"
+
+static void set_eyetracking_enabled(const TArray<FString>& args, UWorld* world)
+{
+	if (!world)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("enableEyetracking requires a valid world."));
+		return;
+	}
+
+	if (args.Num() < 1)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Usage: enableEyetracking 0 or enableEyetracking 1"));
+		return;
+	}
+
+	const bool enable_eyetracking = FCString::Atoi(*args[0]) != 0;
+	int32 updated_count = 0;
+
+	for (TActorIterator<AGaborEnhanceWithRerenderTestChar> actor_it(world); actor_it; ++actor_it)
+	{
+		AGaborEnhanceWithRerenderTestChar* character = *actor_it;
+		if (character)
+		{
+			character->use_eyetracking = enable_eyetracking;
+			updated_count++;
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("enableEyetracking %d applied to %d Gabor rerender character(s)."), enable_eyetracking ? 1 : 0, updated_count);
+}
+
+static FAutoConsoleCommandWithWorldAndArgs enable_eyetracking_command(
+	TEXT("enableEyetracking"),
+	TEXT("Enable or disable Tobii eye tracking for active Gabor rerender characters. Usage: enableEyetracking 0 or enableEyetracking 1"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&set_eyetracking_enabled));
 
 // Sets default values
 AGaborEnhanceWithRerenderTestChar::AGaborEnhanceWithRerenderTestChar()

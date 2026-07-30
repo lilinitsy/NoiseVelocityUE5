@@ -158,7 +158,7 @@ public:
 	void on_response_recorded();
 	void on_increase_velocity();
 	void on_decrease_velocity();
-	void set_screen_black(bool black);
+	void set_screen_black(bool black, float camera_fade_time = 0.1f);
 	void reset_user_position();
 	void write_trial_to_csv(const Exp2Trial& trial);
 	void record_noise_visibility_rating();
