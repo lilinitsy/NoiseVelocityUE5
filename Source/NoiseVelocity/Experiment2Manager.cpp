@@ -358,12 +358,12 @@ void AExperiment2Manager::apply_foveation_level(EXP2_FOVEATION_LEVEL foveation_l
 	if (foveation_level == EXP2_FOVEATION_LEVEL::LOW)
 	{
 		user->frequency_scale = low_frequency_scale;
-		user->blur_rate_arcmin_per_degree = low_blur_rate_arcmin_per_degree;
+		user->blur_rate_arcmin_per_degree = user->low_blur_rate_arcmin_per_degree;
 	}
 	else
 	{
 		user->frequency_scale = high_frequency_scale;
-		user->blur_rate_arcmin_per_degree = high_blur_rate_arcmin_per_degree;
+		user->blur_rate_arcmin_per_degree = user->high_blur_rate_arcmin_per_degree;
 	}
 }
 

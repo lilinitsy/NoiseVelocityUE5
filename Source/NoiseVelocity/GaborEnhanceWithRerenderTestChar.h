@@ -41,6 +41,12 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	float blur_rate_arcmin_per_degree = 0.34;
+
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float low_blur_rate_arcmin_per_degree = 0.14f;
+
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float high_blur_rate_arcmin_per_degree = 0.21f;
 	
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	unsigned int use_radially_increasing_blur = 0;

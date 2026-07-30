@@ -132,12 +132,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Foveation Levels")
 	float high_frequency_scale = 0.5f;
 
-	UPROPERTY(EditAnywhere, Category = "Foveation Levels")
-	float low_blur_rate_arcmin_per_degree = 0.17f;
-
-	UPROPERTY(EditAnywhere, Category = "Foveation Levels")
-	float high_blur_rate_arcmin_per_degree = 0.25f;
-
 	uint32 current_trial_index = 0;
 	float current_velocity_magnitude = 0.0f;
 	uint32 current_noise_visibility_rating = 0;
