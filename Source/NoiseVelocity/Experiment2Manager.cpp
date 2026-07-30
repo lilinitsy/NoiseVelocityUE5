@@ -126,9 +126,9 @@ void AExperiment2Manager::initialize_calibration_trials()
 
 	for (int rep = 0; rep < num_repetitions; rep++)
 	{
-		for (int eccentricity_idx = 0; eccentricity_idx < 2; eccentricity_idx++)
+		for (int eccentricity_idx = 0; eccentricity_idx < 3; eccentricity_idx++)
 		{
-			for (int fps_idx = 0; fps_idx < 2; fps_idx++)
+			for (int fps_idx = 0; fps_idx < 3; fps_idx++)
 			{
 				Exp2Trial no_foveation_trial;
 				no_foveation_trial.phase = 1;
