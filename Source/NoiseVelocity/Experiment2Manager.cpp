@@ -111,6 +111,12 @@ void AExperiment2Manager::Tick(float DeltaTime)
 
 void AExperiment2Manager::initialize_trials()
 {
+	if (practice_test_mode)
+	{
+		initialize_practice_trials();
+		return;
+	}
+
 	initialize_calibration_trials();
 }
 
@@ -155,6 +161,46 @@ void AExperiment2Manager::initialize_calibration_trials()
 					saved_blur_velocities.Add(initial_velocity);
 					trials.Add(trial);
 				}
+			}
+		}
+	}
+
+	for (int i = trials.Num() - 1; i > 0; i--)
+	{
+		int j = FMath::RandRange(0, i);
+		trials.Swap(i, j);
+	}
+}
+
+void AExperiment2Manager::initialize_practice_trials()
+{
+	trials.Empty();
+	saved_blur_velocities.Empty();
+	noise_phase_initialized = false;
+	current_phase = 1;
+
+	const int fps_options[] = {12, 18, 24};
+	const float max_eccentricity_options[] = {28.0f};
+
+	UE_LOG(LogTemp, Log, TEXT("Experiment 2 practice test mode active: 6 blur trials followed by 6 noise trials."));
+
+	for (int eccentricity_idx = 0; eccentricity_idx < 1; eccentricity_idx++)
+	{
+		for (int fps_idx = 0; fps_idx < 3; fps_idx++)
+		{
+			for (int foveation_idx = 0; foveation_idx < static_cast<int>(EXP2_FOVEATION_LEVEL::COUNT); foveation_idx++)
+			{
+				Exp2Trial trial;
+				trial.phase = 1;
+				trial.fps = fps_options[fps_idx];
+				trial.max_eccentricity_deg = max_eccentricity_options[eccentricity_idx];
+				trial.fixation_uv = max_eccentricity_to_fixation_uv(trial.max_eccentricity_deg);
+				trial.foveation_level = static_cast<EXP2_FOVEATION_LEVEL>(foveation_idx);
+				trial.method = EXP2_METHOD::GAUSSIAN_BLUR;
+				trial.initial_velocity = initial_velocity;
+				trial.saved_velocity_index = saved_blur_velocities.Num();
+				saved_blur_velocities.Add(initial_velocity);
+				trials.Add(trial);
 			}
 		}
 	}

@@ -76,6 +76,9 @@ public:
 	int num_repetitions = 1;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
+	bool practice_test_mode = false;
+
+	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	FVector2f fixation_uv = FVector2f(0.05f, 0.5f);
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
@@ -145,6 +148,7 @@ public:
 
 	void initialize_trials();
 	void initialize_calibration_trials();
+	void initialize_practice_trials();
 	void initialize_noise_trials();
 	void start_trial();
 	void apply_trial(const Exp2Trial& trial);
