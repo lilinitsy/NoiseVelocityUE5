@@ -103,7 +103,7 @@ public:
 	float max_velocity = 2000.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
-	float max_rating_gaze_error_deg = 2.0f;
+	float max_rating_gaze_error_deg = 10.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Experiment 2")
 	bool use_custom_reset_transform = false;
