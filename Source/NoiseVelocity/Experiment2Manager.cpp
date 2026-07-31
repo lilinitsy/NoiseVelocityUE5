@@ -164,6 +164,8 @@ void AExperiment2Manager::initialize_calibration_trials()
 		int j = FMath::RandRange(0, i);
 		trials.Swap(i, j);
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("Num non-noise trials: %u\n"), trials.Num());
 }
 
 void AExperiment2Manager::initialize_noise_trials()
@@ -201,6 +203,9 @@ void AExperiment2Manager::initialize_noise_trials()
 		int j = FMath::RandRange(0, i);
 		trials.Swap(i, j);
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("Num trials after noise phase initialized: %u\n"), trials.Num());
+
 }
 
 void AExperiment2Manager::on_response_recorded()
